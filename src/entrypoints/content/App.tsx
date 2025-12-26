@@ -272,12 +272,15 @@ const TypeChallenge = memo(function TypeChallenge({
 
   return (
     <div className="space-y-4">
-      <div className="text-center">
-        <p className="text-sm text-muted-foreground mb-2">
-          Type this text exactly:
-        </p>
-        <div className="p-4 bg-muted/30 rounded-lg overflow-x-auto">
-          <code className="text-base font-mono tracking-wider whitespace-nowrap">
+      <div>
+        <div className="flex justify-between text-sm text-muted-foreground mb-2">
+          <p>Type this text exactly:</p>
+          <p>
+            {inputText.length}/{targetText.length}
+          </p>
+        </div>
+        <div className="p-3 bg-muted/30 rounded-lg overflow-hidden flex justify-center">
+          <code className="text-sm font-mono tracking-wider whitespace-nowrap">
             {targetText.split("").map((char, i) => (
               <span
                 key={i}
@@ -297,27 +300,19 @@ const TypeChallenge = memo(function TypeChallenge({
       </div>
 
       {!completed ? (
-        <>
-          <Input
-            ref={inputRef}
-            value={inputText}
-            onChange={handleInput}
-            onPaste={handlePaste}
-            onDrop={handleDrop}
-            placeholder="Start typing..."
-            className="font-mono text-center tracking-wider"
-            autoComplete="off"
-            autoCorrect="off"
-            autoCapitalize="off"
-            spellCheck={false}
-          />
-          <p className="text-center text-xs text-muted-foreground">
-            {inputText.length} / {targetText.length} characters
-            {inputText.length > 0 && inputText.length < targetText.length && (
-              <span className="ml-2">• Copy/paste disabled</span>
-            )}
-          </p>
-        </>
+        <Input
+          ref={inputRef}
+          value={inputText}
+          onChange={handleInput}
+          onPaste={handlePaste}
+          onDrop={handleDrop}
+          placeholder="Start typing..."
+          className="font-mono text-center tracking-wider"
+          autoComplete="off"
+          autoCorrect="off"
+          autoCapitalize="off"
+          spellCheck={false}
+        />
       ) : (
         <div className="flex items-center justify-center gap-2 text-green-500">
           <IconCheck className="size-5" />
@@ -447,8 +442,7 @@ export default function BlockingOverlay() {
       className="fixed inset-0 w-screen h-screen flex items-center justify-center p-4 dark"
       style={{
         zIndex: 2147483647,
-        backgroundColor: "rgba(0, 0, 0, 0.92)",
-        backdropFilter: "blur(8px)",
+        backgroundColor: "rgba(0, 0, 0, 1)",
         fontFamily:
           "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
@@ -461,22 +455,24 @@ export default function BlockingOverlay() {
       />
 
       <Card className="w-full max-w-md relative bg-card/95 backdrop-blur shadow-2xl">
-        <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-3 p-3 rounded-full bg-primary/10 w-fit">
+        <CardHeader className="text-center pb-2 flex">
+          <div className="p-3 rounded-full bg-primary/10 w-fit">
             <IconShieldLock className="size-8 text-primary" />
           </div>
-          <CardTitle className="text-xl">Site Blocked</CardTitle>
-          <CardDescription>
-            <span className="text-sm bg-muted/50 px-2 py-0.5 rounded font-medium">
-              {blockedSite.name}
-            </span>
-          </CardDescription>
+          <div className="flex flex-col ml-2 items-start justify-center gap-1">
+            <CardTitle className="text-xl">Site Blocked</CardTitle>
+            <CardDescription>
+              <span className="text-sm bg-muted/50 px-2 py-0.5 rounded font-medium">
+                {blockedSite.name}
+              </span>
+            </CardDescription>
+          </div>
         </CardHeader>
 
-        <CardContent className="space-y-6">
-          <div className="p-4 rounded-lg bg-muted/30">
+        <CardContent className="space-y-3">
+          <div className="p-3 rounded-lg bg-muted/30">
             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/30">
-              <div className="p-1.5 rounded-md bg-primary/10 text-primary">
+              <div className="text-primary">
                 {methodIcons[blockedSite.unlockMethod]}
               </div>
               <span className="font-medium">
