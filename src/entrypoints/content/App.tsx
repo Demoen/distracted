@@ -353,7 +353,7 @@ export default function BlockingOverlay() {
           }
         }
       } catch (error) {
-        console.error("[Lockout] Error checking block status:", error);
+        console.error("[distacted] Error checking block status:", error);
       }
 
       setChecking(false);

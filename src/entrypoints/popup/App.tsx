@@ -432,7 +432,7 @@ export default function App() {
           )}
           <IconShieldLock className="size-5 text-primary" />
           <h1 className="text-lg font-bold tracking-tight">
-            {view === "main" && "Lockout"}
+            {view === "main" && "distacted"}
             {view === "add" && "Block Site"}
             {view === "edit" && "Edit Block"}
             {view === "stats" && "Statistics"}
@@ -706,7 +706,7 @@ export default function App() {
               </CardHeader>
               <CardContent>
                 <p className="text-xs text-muted-foreground">
-                  Lockout helps you stay focused by blocking distracting
+                  distacted helps you stay focused by blocking distracting
                   websites. All data is stored locally and never leaves your
                   device.
                 </p>

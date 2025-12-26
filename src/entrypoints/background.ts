@@ -7,7 +7,7 @@ import {
 } from "@/lib/storage";
 
 export default defineBackground(() => {
-  console.log("[Lockout] Background script initialized");
+  console.log("[distacted] Background script initialized");
 
   // Handle messages from content scripts and popup
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
@@ -61,7 +61,7 @@ export default defineBackground(() => {
             sendResponse({ error: "Unknown message type" });
         }
       } catch (error) {
-        console.error("[Lockout] Message handler error:", error);
+        console.error("[distacted] Message handler error:", error);
         sendResponse({ error: String(error) });
       }
     })();

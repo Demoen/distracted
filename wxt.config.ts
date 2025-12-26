@@ -7,7 +7,7 @@ export default defineConfig({
   modules: ["@wxt-dev/module-react"],
   srcDir: "src",
   manifest: {
-    name: "Lockout",
+    name: "distacted",
     description: "Block distracting websites with customizable unlock challenges",
     permissions: ["webNavigation", "storage", "tabs", "activeTab"],
     host_permissions: ["<all_urls>"],
