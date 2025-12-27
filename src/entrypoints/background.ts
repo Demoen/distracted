@@ -7,28 +7,29 @@ import {
   extractDomain,
 } from "@/lib/storage";
 import {
-  initializeDnr,
-  syncDnrRules,
+  initializeBlocker,
+  syncRules,
   grantAccess,
   isSiteUnlocked,
   getUnlockState,
   handleRelockAlarm,
-} from "@/lib/blocker/dnr";
+  isMV3,
+} from "@/lib/blocker";
 
 export default defineBackground(() => {
   console.log("[distacted] Background script initialized");
 
-  // Initialize DNR rules on startup
-  initializeDnr().catch((err) => {
-    console.error("[distacted] Failed to initialize DNR:", err);
+  // Initialize the blocker (DNR for MV3, webRequest for MV2)
+  initializeBlocker().catch((err) => {
+    console.error("[distacted] Failed to initialize blocker:", err);
   });
 
-  // Re-sync DNR rules when storage changes (blocked sites updated)
+  // Re-sync rules when storage changes (blocked sites updated)
   browser.storage.onChanged.addListener((changes, areaName) => {
     if (areaName === "local" && changes.blockedSites) {
-      console.log("[distacted] Blocked sites changed, syncing DNR rules");
-      syncDnrRules().catch((err) => {
-        console.error("[distacted] Failed to sync DNR rules:", err);
+      console.log("[distacted] Blocked sites changed, syncing rules");
+      syncRules().catch((err) => {
+        console.error("[distacted] Failed to sync rules:", err);
       });
     }
   });
@@ -52,13 +53,11 @@ export default defineBackground(() => {
         await browser.tabs.update(tabId, { url: blockedPageUrl });
         console.log(`[distacted] Redirected tab ${tabId} after relock`);
       } catch (err) {
-        // Tab might have been closed
         console.log(`[distacted] Could not redirect tab ${tabId}:`, err);
       }
     }
 
-    // Broadcast relock event to any blocked pages that might be showing for this site
-    // (they should refresh to show the challenge again)
+    // Broadcast relock event to any blocked pages
     try {
       await browser.runtime.sendMessage({
         type: "SITE_RELOCKED",
@@ -70,6 +69,7 @@ export default defineBackground(() => {
   });
 
   // Helper to check URL and redirect if blocked
+  // Used by webNavigation listeners for soft navigation detection
   async function checkAndBlockUrl(tabId: number, url: string, source: string) {
     // Skip extension pages
     if (url.startsWith("chrome-extension://")) return;
@@ -99,31 +99,37 @@ export default defineBackground(() => {
     }
   }
 
-  // WebNavigation: fires BEFORE the request is made (hard navigations)
+  // WebNavigation listeners for catching navigations
+  // For MV3: Primary blocking mechanism (DNR just blocks as fallback)
+  // For MV2: Catches soft navigations that webRequest misses
   browser.webNavigation.onBeforeNavigate.addListener(async (details) => {
     if (details.frameId !== 0) return;
+    // For MV2, webRequest handles hard navigations, but we still want this
+    // for the redirect (webRequest can only block, this actually redirects)
+    // Actually for MV2 webRequest does redirect. But this catches things faster.
+    if (!isMV3) return; // Let webRequest handle it for MV2
     await checkAndBlockUrl(details.tabId, details.url, "onBeforeNavigate");
   });
 
-  // WebNavigation: fires when page uses History API (soft navigations like YouTube/SPAs)
+  // Soft navigation detection (History API)
   browser.webNavigation.onHistoryStateUpdated.addListener(async (details) => {
     if (details.frameId !== 0) return;
     await checkAndBlockUrl(details.tabId, details.url, "onHistoryStateUpdated");
   });
 
-  // Fallback: tabs.onUpdated catches any URL changes we might have missed
+  // Fallback: tabs.onUpdated catches URL changes
   browser.tabs.onUpdated.addListener(async (tabId, changeInfo, _tab) => {
-    // Only check when URL actually changes
     if (!changeInfo.url) return;
+    // For MV2, webRequest handles hard navigations, skip those
+    // But still catch soft navigations
     await checkAndBlockUrl(tabId, changeInfo.url, "tabs.onUpdated");
   });
 
-  // Handle messages from content scripts, popup, and blocked page
+  // Handle messages from popup and blocked page
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     (async () => {
       try {
         switch (message.type) {
-          // Legacy: Check if URL is blocked (still used by content script for MV2)
           case "CHECK_BLOCKED": {
             const url = message.url as string;
             const site = await findMatchingBlockedSite(url);
@@ -141,7 +147,6 @@ export default defineBackground(() => {
             break;
           }
 
-          // Get site info for blocked page
           case "GET_SITE_INFO": {
             const { siteId, url } = message as { siteId?: string; url: string };
             const settings = await getSettings();
@@ -158,10 +163,8 @@ export default defineBackground(() => {
             }
 
             if (site) {
-              // Check if currently unlocked (might have been unlocked by another tab)
               const unlockState = await getUnlockState(site.id);
               if (unlockState) {
-                // Site is unlocked - tell the blocked page it can skip the challenge
                 sendResponse({
                   site,
                   statsEnabled: settings.statsEnabled,
@@ -181,7 +184,6 @@ export default defineBackground(() => {
             break;
           }
 
-          // Check if a site is unlocked (for blocked page to poll)
           case "CHECK_UNLOCK_STATE": {
             const { siteId } = message as { siteId: string };
             const unlockState = await getUnlockState(siteId);
@@ -192,7 +194,6 @@ export default defineBackground(() => {
             break;
           }
 
-          // Unlock a site (called from blocked page after challenge)
           case "UNLOCK_SITE": {
             const { siteId, durationMinutes } = message as {
               siteId: string;
@@ -201,7 +202,7 @@ export default defineBackground(() => {
 
             const { expiresAt } = await grantAccess(siteId, durationMinutes);
 
-            // Broadcast to all blocked pages for this site so they can update UI
+            // Broadcast to all blocked pages for this site
             try {
               await browser.runtime.sendMessage({
                 type: "SITE_UNLOCKED",
@@ -216,7 +217,6 @@ export default defineBackground(() => {
             break;
           }
 
-          // Update stats
           case "UPDATE_STATS": {
             const { siteId, update } = message as {
               siteId: string;
@@ -231,14 +231,12 @@ export default defineBackground(() => {
             break;
           }
 
-          // Get settings
           case "GET_SETTINGS": {
             const settings = await getSettings();
             sendResponse({ settings });
             break;
           }
 
-          // Get current tab URL (for popup)
           case "GET_CURRENT_TAB_URL": {
             const url = await getCurrentTabUrl();
             const domain = url ? extractDomain(url) : "";
@@ -246,9 +244,8 @@ export default defineBackground(() => {
             break;
           }
 
-          // Force re-sync DNR rules
-          case "SYNC_DNR_RULES": {
-            await syncDnrRules();
+          case "SYNC_RULES": {
+            await syncRules();
             sendResponse({ success: true });
             break;
           }
@@ -262,6 +259,6 @@ export default defineBackground(() => {
       }
     })();
 
-    return true; // Keep message channel open for async response
+    return true;
   });
 });
