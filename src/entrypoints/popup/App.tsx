@@ -44,7 +44,6 @@ import {
 
 type View = "main" | "add" | "edit" | "stats" | "settings";
 
-// Pattern Rule Editor Component
 const PatternRuleItem = memo(function PatternRuleItem({
   rule,
   onUpdate,
@@ -111,7 +110,6 @@ const SiteItem = memo(function SiteItem({
   const allowRules = site.rules.filter((r) => r.allow);
   const challenge = CHALLENGES[site.unlockMethod];
 
-  // Format challenge settings for display
   const settingsSummary = useMemo(() => {
     const settings = site.challengeSettings;
     const parts: string[] = [];
@@ -245,7 +243,6 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [editingSite, setEditingSite] = useState<BlockedSite | null>(null);
 
-  // Form state
   const [formName, setFormName] = useState("");
   const [formRules, setFormRules] = useState<PatternRule[]>([
     { pattern: "", allow: false },
@@ -289,7 +286,6 @@ export default function App() {
         type: "GET_CURRENT_TAB_URL",
       });
       if (result.domain) {
-        // Update the first rule or add domain to existing rules
         setFormRules((rules) => {
           if (rules.length === 1 && !rules[0].pattern) {
             return [{ pattern: result.domain, allow: false }];
@@ -421,7 +417,6 @@ export default function App() {
 
   return (
     <div className="w-[400px] h-[520px] bg-background text-foreground flex flex-col overflow-hidden dark">
-      {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/30 bg-muted/30">
         <div className="flex items-center gap-2">
           {view !== "main" && (
@@ -458,7 +453,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Content */}
       <div className="flex-1 overflow-y-auto p-4 scrollbar-thin">
         {view === "main" && (
           <div className="space-y-3">
@@ -583,7 +577,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Dynamic challenge options */}
             {(() => {
               const challenge = CHALLENGES[formMethod];
               const optionEntries = Object.entries(challenge.options);
@@ -765,7 +758,6 @@ export default function App() {
         )}
       </div>
 
-      {/* Footer - only on main view */}
       {view === "main" && (
         <div className="p-4 border-t border-border/30 bg-muted/20">
           <Button onClick={() => setView("add")} className="w-full">

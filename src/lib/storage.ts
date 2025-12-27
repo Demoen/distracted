@@ -1,4 +1,3 @@
-// Types for the extension
 import type {
   UnlockMethod,
   ChallengeSettingsMap,
@@ -36,22 +35,18 @@ export interface Settings {
 
 import { DEFAULT_AUTO_RELOCK, STORAGE_KEYS } from "./consts";
 
-// Default values
 export const defaultSettings: Settings = {
   statsEnabled: true,
 };
 
-// Generate a short random ID
 export function generateId(): string {
   return Math.random().toString(36).substring(2, 10);
 }
 
-// Generate annoying text to type
 export function generateAnnoyingText(): string {
   return crypto.randomUUID();
 }
 
-// Storage helpers
 export async function getBlockedSites(): Promise<BlockedSite[]> {
   const result = (await browser.storage.local.get(
     STORAGE_KEYS.BLOCKED_SITES
@@ -94,7 +89,6 @@ export async function deleteBlockedSite(id: string): Promise<void> {
   await saveBlockedSites(sites.filter((s) => s.id !== id));
 }
 
-// Stats helpers
 export async function getStats(): Promise<SiteStats[]> {
   const result = (await browser.storage.local.get(
     STORAGE_KEYS.STATS
@@ -136,7 +130,6 @@ export async function clearStats(): Promise<void> {
   await browser.storage.local.set({ [STORAGE_KEYS.STATS]: [] });
 }
 
-// Settings helpers
 export async function getSettings(): Promise<Settings> {
   const result = (await browser.storage.local.get(
     STORAGE_KEYS.SETTINGS
@@ -148,26 +141,21 @@ export async function saveSettings(settings: Settings): Promise<void> {
   await browser.storage.local.set({ [STORAGE_KEYS.SETTINGS]: settings });
 }
 
-// URL matching helper - matches a single pattern against URL
 export function urlMatchesPattern(url: string, pattern: string): boolean {
   try {
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
     const pathname = urlObj.pathname.toLowerCase();
-    const fullPath = hostname + pathname;
 
-    // Normalize pattern: strip protocol if accidentally included
     let normalizedPattern = pattern.toLowerCase().trim();
     normalizedPattern = normalizedPattern
       .replace(/^https?:\/\//, "")
       .replace(/^www\./, "");
 
-    // Handle path patterns (e.g., "x.com/messages")
     if (normalizedPattern.includes("/")) {
       const [patternHost, ...pathParts] = normalizedPattern.split("/");
       const patternPath = "/" + pathParts.join("/");
 
-      // Check if hostname matches
       let hostMatches = false;
       if (patternHost.startsWith("*.")) {
         const domain = patternHost.slice(2);
@@ -181,20 +169,17 @@ export function urlMatchesPattern(url: string, pattern: string): boolean {
 
       if (!hostMatches) return false;
 
-      // Check if path matches (prefix match)
       return (
         pathname.startsWith(patternPath) ||
         pathname === patternPath.replace(/\/$/, "")
       );
     }
 
-    // Handle wildcard patterns like "*.example.com"
     if (normalizedPattern.startsWith("*.")) {
       const domain = normalizedPattern.slice(2);
       return hostname === domain || hostname.endsWith("." + domain);
     }
 
-    // Handle exact domain matches (also match www. variants)
     return (
       hostname === normalizedPattern ||
       hostname === "www." + normalizedPattern ||
@@ -205,7 +190,6 @@ export function urlMatchesPattern(url: string, pattern: string): boolean {
   }
 }
 
-// Check if URL matches a blocked site's rules
 export function urlMatchesSiteRules(url: string, site: BlockedSite): boolean {
   if (!site.enabled) return false;
 
@@ -215,10 +199,8 @@ export function urlMatchesSiteRules(url: string, site: BlockedSite): boolean {
   for (const rule of site.rules) {
     if (urlMatchesPattern(url, rule.pattern)) {
       if (rule.allow) {
-        // Allow rule matches - don't block this URL
         return false;
       } else {
-        // Block rule matches
         isBlocked = true;
       }
     }
@@ -227,7 +209,6 @@ export function urlMatchesSiteRules(url: string, site: BlockedSite): boolean {
   return isBlocked;
 }
 
-// Find matching blocked site for a URL
 export async function findMatchingBlockedSite(
   url: string
 ): Promise<BlockedSite | null> {
@@ -235,7 +216,6 @@ export async function findMatchingBlockedSite(
   return sites.find((site) => urlMatchesSiteRules(url, site)) || null;
 }
 
-// Get current tab URL (for popup)
 export async function getCurrentTabUrl(): Promise<string | null> {
   try {
     const [tab] = await browser.tabs.query({
@@ -248,7 +228,6 @@ export async function getCurrentTabUrl(): Promise<string | null> {
   }
 }
 
-// Extract domain from URL
 export function extractDomain(url: string): string {
   try {
     const urlObj = new URL(url);

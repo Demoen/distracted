@@ -79,12 +79,10 @@ type InferChallengeSettings<T> = T extends { options: infer O }
   ? { [K in keyof O]: O[K] extends { default: infer D } ? D : never }
   : never;
 
-// Map of unlock method to its settings type
 export type ChallengeSettingsMap = {
   [K in UnlockMethod]: InferChallengeSettings<(typeof CHALLENGES)[K]>;
 };
 
-// Get default settings for a challenge
 export function getDefaultChallengeSettings<M extends UnlockMethod>(
   method: M
 ): ChallengeSettingsMap[M] {

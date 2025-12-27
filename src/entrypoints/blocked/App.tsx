@@ -16,9 +16,8 @@ import {
   IconArrowLeft,
   IconLockOpen,
 } from "@tabler/icons-react";
-import { CHALLENGES } from "@/components/challenges";
+import { CHALLENGES, type ChallengeSettingsMap } from "@/components/challenges";
 
-// Main blocked page component
 export default function BlockedPage() {
   const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
   const [originalUrl, setOriginalUrl] = useState<string | null>(null);
@@ -31,7 +30,6 @@ export default function BlockedPage() {
   const visitTracked = useRef(false);
   const siteIdRef = useRef<string | null>(null);
 
-  // Parse URL params and get site info
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const url = params.get("url");
@@ -46,7 +44,6 @@ export default function BlockedPage() {
     setOriginalUrl(url);
     siteIdRef.current = siteId;
 
-    // Get site info from background
     (async () => {
       try {
         const result = await browser.runtime.sendMessage({
@@ -62,13 +59,11 @@ export default function BlockedPage() {
           setStatsEnabled(result.statsEnabled);
           siteIdRef.current = result.site.id;
 
-          // Check if already unlocked by another tab
           if (result.alreadyUnlocked) {
             setAlreadyUnlocked(true);
             setChallengeComplete(true);
           }
 
-          // Track visit (only if not already unlocked)
           if (
             result.statsEnabled &&
             !visitTracked.current &&
@@ -82,7 +77,6 @@ export default function BlockedPage() {
             });
           }
         } else {
-          // Site no longer blocked or already unlocked, redirect through
           window.location.href = url;
         }
       } catch (err) {
@@ -94,7 +88,6 @@ export default function BlockedPage() {
     })();
   }, []);
 
-  // Listen for unlock/relock events from other tabs
   useEffect(() => {
     const handleMessage = (message: {
       type: string;
@@ -107,7 +100,6 @@ export default function BlockedPage() {
         message.type === "SITE_UNLOCKED" &&
         message.siteId === siteIdRef.current
       ) {
-        // Another tab completed the challenge - skip to "Continue to site"
         setAlreadyUnlocked(true);
         setChallengeComplete(true);
       }
@@ -116,7 +108,6 @@ export default function BlockedPage() {
         message.type === "SITE_RELOCKED" &&
         message.siteId === siteIdRef.current
       ) {
-        // Site was relocked - refresh the page to show challenge again
         window.location.reload();
       }
     };
@@ -137,13 +128,11 @@ export default function BlockedPage() {
     setUnlocking(true);
 
     try {
-      // If already unlocked by another tab, just navigate
       if (alreadyUnlocked) {
         window.location.href = originalUrl;
         return;
       }
 
-      // Request unlock from background
       const result = await browser.runtime.sendMessage({
         type: "UNLOCK_SITE",
         siteId: blockedSite.id,
@@ -151,7 +140,6 @@ export default function BlockedPage() {
       });
 
       if (result.success) {
-        // Track passed challenge
         if (statsEnabled) {
           await browser.runtime.sendMessage({
             type: "UPDATE_STATS",
@@ -160,7 +148,6 @@ export default function BlockedPage() {
           });
         }
 
-        // Navigate to original URL
         window.location.href = originalUrl;
       } else {
         setError(result.error || "Failed to unlock");
@@ -212,6 +199,12 @@ export default function BlockedPage() {
   }
 
   const challenge = CHALLENGES[blockedSite.unlockMethod];
+  const challengeSettings =
+    blockedSite.challengeSettings as typeof challenge extends {
+      render: (props: infer P extends { settings: any }) => any;
+    }
+      ? P["settings"]
+      : never;
 
   return (
     <div
@@ -221,7 +214,6 @@ export default function BlockedPage() {
           "'Inter Variable', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
       }}
     >
-      {/* Background pattern */}
       <div
         className="fixed inset-0 opacity-5 pointer-events-none"
         style={{
@@ -245,14 +237,12 @@ export default function BlockedPage() {
         </CardHeader>
 
         <CardContent className="space-y-3">
-          {/* Show the URL being blocked */}
           {originalUrl && (
             <div className="text-xs text-muted-foreground text-center truncate px-4 -mt-2 mb-2">
               {originalUrl}
             </div>
           )}
 
-          {/* Already unlocked by another tab - show simple continue */}
           {alreadyUnlocked ? (
             <div className="p-4 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="flex items-center gap-3 text-green-500">
@@ -266,7 +256,6 @@ export default function BlockedPage() {
               </div>
             </div>
           ) : (
-            /* Show the challenge */
             <div className="p-3 rounded-lg bg-muted/30">
               <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/30">
                 <div className="text-primary">{challenge.icon}</div>
@@ -274,8 +263,7 @@ export default function BlockedPage() {
               </div>
 
               {challenge.render({
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                settings: blockedSite.challengeSettings as any,
+                settings: challengeSettings,
                 onComplete: handleChallengeComplete,
               })}
             </div>

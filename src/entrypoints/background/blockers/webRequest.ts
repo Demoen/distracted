@@ -21,22 +21,13 @@ interface UnlockState {
   expiresAt: number;
 }
 
-// In-memory cache for faster lookups (webRequest needs to be synchronous)
 let cachedSites: BlockedSite[] = [];
-
-// In-memory unlock state (MV2 doesn't have storage.session)
 const unlockedSites = new Map<string, UnlockState>();
 
-/**
- * Refresh the cached sites list
- */
 export async function refreshCache(): Promise<void> {
   cachedSites = await getBlockedSites();
 }
 
-/**
- * Check if a URL should be blocked (synchronous, uses cache)
- */
 function shouldBlockUrl(url: string): {
   blocked: boolean;
   site: BlockedSite | null;
@@ -60,18 +51,11 @@ function shouldBlockUrl(url: string): {
   return { blocked: false, site: null };
 }
 
-/**
- * WebRequest listener callback
- *
- * Firefox security doesn't allow redirecting to moz-extension:// URLs via webRequest.
- * Instead, we cancel the request and use tabs.update() to navigate to the blocked page.
- */
 function onBeforeRequestListener(details: {
   url: string;
   type: string;
   tabId: number;
 }): { cancel: boolean } | undefined {
-  // Only block main_frame requests
   if (details.type !== "main_frame") {
     return undefined;
   }
@@ -79,7 +63,6 @@ function onBeforeRequestListener(details: {
   const url = details.url;
   const tabId = details.tabId;
 
-  // Skip extension pages and internal URLs
   if (isInternalUrl(url)) {
     return undefined;
   }
@@ -90,25 +73,19 @@ function onBeforeRequestListener(details: {
     return undefined;
   }
 
-  // Cancel the request and redirect via tabs.update() (async, but that's ok)
   const blockedPageUrl = browser.runtime.getURL(
     `/blocked.html?url=${encodeURIComponent(url)}&siteId=${encodeURIComponent(site.id)}`
   );
 
-  // Use tabs.update asynchronously - the request is already cancelled
   if (tabId && tabId !== -1) {
     browser.tabs.update(tabId, { url: blockedPageUrl }).catch((err) => {
       console.error(`[distacted] Failed to redirect tab ${tabId}:`, err);
     });
   }
 
-  // Cancel the original request
   return { cancel: true };
 }
 
-/**
- * Initialize the webRequest blocker
- */
 export async function initializeWebRequest(): Promise<void> {
   await refreshCache();
 
@@ -123,9 +100,6 @@ export async function initializeWebRequest(): Promise<void> {
   );
 }
 
-/**
- * Grant temporary access to a site
- */
 export async function grantAccess(
   siteId: string,
   durationMinutes: number | null
@@ -133,7 +107,6 @@ export async function grantAccess(
   const durationMs = (durationMinutes ?? 60) * 60 * 1000;
   const expiresAt = Date.now() + durationMs;
 
-  // Store unlock state in memory
   unlockedSites.set(siteId, { siteId, expiresAt });
 
   await browser.alarms.create(`${ALARM_PREFIX}${siteId}`, {
@@ -143,14 +116,8 @@ export async function grantAccess(
   return { expiresAt };
 }
 
-/**
- * Revoke access to a site
- */
 export async function revokeAccess(siteId: string): Promise<number[]> {
-  // Remove unlock state
   unlockedSites.delete(siteId);
-
-  // Clear alarm
   await browser.alarms.clear(`${ALARM_PREFIX}${siteId}`);
 
   const tabsToRedirect = await findTabsOnBlockedSite(siteId);
@@ -158,9 +125,6 @@ export async function revokeAccess(siteId: string): Promise<number[]> {
   return tabsToRedirect;
 }
 
-/**
- * Find all tabs currently on a blocked site
- */
 export async function findTabsOnBlockedSite(siteId: string): Promise<number[]> {
   const site = cachedSites.find((s) => s.id === siteId);
   if (!site) return [];
@@ -170,7 +134,6 @@ export async function findTabsOnBlockedSite(siteId: string): Promise<number[]> {
 
   for (const tab of tabs) {
     if (!tab.id || !tab.url) continue;
-    // Skip extension pages and internal URLs
     if (isInternalUrl(tab.url)) continue;
 
     if (urlMatchesSiteRules(tab.url, site)) {
@@ -181,9 +144,6 @@ export async function findTabsOnBlockedSite(siteId: string): Promise<number[]> {
   return matchingTabIds;
 }
 
-/**
- * Check if a site is currently unlocked
- */
 export async function isSiteUnlocked(siteId: string): Promise<boolean> {
   const state = unlockedSites.get(siteId);
   if (!state) return false;
@@ -196,9 +156,6 @@ export async function isSiteUnlocked(siteId: string): Promise<boolean> {
   return true;
 }
 
-/**
- * Get unlock state for a site
- */
 export async function getUnlockState(
   siteId: string
 ): Promise<UnlockState | null> {
@@ -213,9 +170,6 @@ export async function getUnlockState(
   return state;
 }
 
-/**
- * Handle relock alarm
- */
 export async function handleRelockAlarm(alarmName: string): Promise<{
   siteId: string;
   tabsToRedirect: number[];
@@ -227,9 +181,6 @@ export async function handleRelockAlarm(alarmName: string): Promise<{
   return { siteId, tabsToRedirect };
 }
 
-/**
- * Sync rules - for webRequest this just refreshes the cache
- */
 export async function syncRules(): Promise<void> {
   await refreshCache();
 }
