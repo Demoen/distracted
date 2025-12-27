@@ -34,7 +34,14 @@ export default defineConfig({
       permissions,
       host_permissions: hostPermissions,
       ...(isFirefox
-        ? {}
+        ? {
+            browser_specific_settings: {
+              gecko: {
+                strict_min_version: "128.0",
+                data_collection_permissions: "none",
+              },
+            },
+          }
         : {
             declarative_net_request: {
               rule_resources: [],
