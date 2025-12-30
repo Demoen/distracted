@@ -2,6 +2,7 @@ export default defineContentScript({
     matches: ["<all_urls>"],
     async main() {
         const url = window.location.href;
+        let domain: string | null = null;
         let isTracking = false;
         let siteId: string | null = null;
         let timer: number | undefined;
@@ -19,6 +20,11 @@ export default defineContentScript({
 
             if (response && response.site && response.statsEnabled) {
                 siteId = response.site.id;
+                try {
+                    domain = new URL(url).hostname.replace(/^www\./, "");
+                } catch {
+                    domain = null;
+                }
                 startTracking();
             }
         } catch (e) {
@@ -59,6 +65,7 @@ export default defineContentScript({
             browser.runtime.sendMessage({
                 type: "UPDATE_STATS",
                 siteId,
+                domain,
                 update: { addTime: 1000 }, // 1000ms = 1s
             }).catch(() => {
                 stopTracking(); // Stop if extension invalid

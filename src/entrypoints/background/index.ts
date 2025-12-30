@@ -2,6 +2,9 @@ import {
   findMatchingBlockedSite,
   getBlockedSites,
   getSettings,
+  normalizeStats,
+  type SiteStats,
+  type StatsScope,
 } from "@/lib/storage";
 import { STORAGE_KEYS } from "@/lib/consts";
 import * as dnr from "./blockers/dnr";
@@ -30,6 +33,34 @@ async function getUnlockState(
   else return webRequest.getUnlockState(siteId);
 }
 
+function normalizeDomain(domain: string | undefined): string | null {
+  if (!domain) return null;
+  return domain.toLowerCase().replace(/^www\./, "");
+}
+
+function getOrCreateStat(
+  stats: SiteStats[],
+  scope: StatsScope,
+  key: string,
+  meta: { siteId?: string; domain?: string }
+): SiteStats {
+  let entry = stats.find((stat) => stat.scope === scope && stat.key === key);
+  if (!entry) {
+    entry = {
+      scope,
+      key,
+      siteId: meta.siteId,
+      domain: meta.domain,
+      visitCount: 0,
+      passedCount: 0,
+      timeSpentMs: 0,
+      lastVisit: 0,
+    };
+    stats.push(entry);
+  }
+  return entry;
+}
+
 export default defineBackground(() => {
   console.log("[distracted] Background script initialized");
 
@@ -41,7 +72,8 @@ export default defineBackground(() => {
   });
 
   browser.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && changes.blockedSites) {
+    const blockedSitesChanged = changes[STORAGE_KEYS.BLOCKED_SITES];
+    if ((areaName === "local" || areaName === "sync") && blockedSitesChanged) {
       console.log("[distracted] Blocked sites changed, syncing rules");
       syncRules().catch((err) => {
         console.error("[distracted] Failed to sync rules:", err);
@@ -191,29 +223,45 @@ export default defineBackground(() => {
           }
 
           case "UPDATE_STATS": {
-            const { siteId, update } = message;
+            const { siteId, update, domain } = message;
             (async () => {
-              const statsResult = await browser.storage.local.get(STORAGE_KEYS.STATS);
-              const stats = (statsResult[STORAGE_KEYS.STATS] ?? []) as any[];
-              let siteStats = stats.find((s) => s.siteId === siteId);
+              const statsResult = await browser.storage.local.get(
+                STORAGE_KEYS.STATS
+              );
+              const rawStats = (statsResult[STORAGE_KEYS.STATS] ??
+                []) as SiteStats[];
+              const normalized = normalizeStats(rawStats);
+              const stats = normalized.stats;
 
-              if (!siteStats) {
-                siteStats = {
-                  siteId,
-                  visitCount: 0,
-                  passedCount: 0,
-                  timeSpentMs: 0,
-                  lastVisit: Date.now(),
-                };
-                stats.push(siteStats);
+              const normalizedDomain = normalizeDomain(domain);
+              const entries: SiteStats[] = [];
+
+              if (siteId && typeof siteId === "string") {
+                entries.push(
+                  getOrCreateStat(stats, "site", siteId, { siteId })
+                );
               }
 
-              if (update.incrementVisit) siteStats.visitCount++;
-              if (update.incrementPassed) siteStats.passedCount++;
-              if (update.addTime) siteStats.timeSpentMs += update.addTime;
-              siteStats.lastVisit = Date.now();
+              if (normalizedDomain) {
+                entries.push(
+                  getOrCreateStat(stats, "domain", normalizedDomain, {
+                    domain: normalizedDomain,
+                  })
+                );
+              }
 
-              await browser.storage.local.set({ [STORAGE_KEYS.STATS]: stats });
+              if (entries.length > 0) {
+                for (const entry of entries) {
+                  if (update.incrementVisit) entry.visitCount += 1;
+                  if (update.incrementPassed) entry.passedCount += 1;
+                  if (update.addTime) entry.timeSpentMs += update.addTime;
+                  entry.lastVisit = Date.now();
+                }
+              }
+
+              await browser.storage.local.set({
+                [STORAGE_KEYS.STATS]: stats,
+              });
             })().catch((err) => console.error("Failed to update stats:", err));
 
             sendResponse({ success: true });

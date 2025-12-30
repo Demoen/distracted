@@ -12,6 +12,7 @@ import {
   type PatternRule,
   type Schedule,
   saveBlockedSites,
+  isSyncAvailable,
 } from "@/lib/storage";
 import { DEFAULT_AUTO_RELOCK, STORAGE_KEYS } from "@/lib/consts";
 import {
@@ -42,6 +43,9 @@ import {
 } from "@tabler/icons-react";
 
 type View = "main" | "add" | "edit" | "stats" | "settings";
+const DEFAULT_UNLOCK_METHOD: UnlockMethod = "timer";
+const isUnlockMethod = (value: string | undefined): value is UnlockMethod =>
+  !!value && value in CHALLENGES;
 
 const PatternRuleItem = memo(function PatternRuleItem({
   rule,
@@ -105,12 +109,18 @@ const SiteItem = memo(function SiteItem({
   onEdit: (site: BlockedSite) => void;
   onDelete: (id: string) => void;
 }) {
+  const resolvedMethod = isUnlockMethod(site.unlockMethod)
+    ? site.unlockMethod
+    : DEFAULT_UNLOCK_METHOD;
+  const challenge = CHALLENGES[resolvedMethod];
+  const settings = {
+    ...getDefaultChallengeSettings(resolvedMethod),
+    ...(isUnlockMethod(site.unlockMethod) ? site.challengeSettings : {}),
+  };
   const blockRules = site.rules.filter((r) => !r.allow);
   const allowRules = site.rules.filter((r) => r.allow);
-  const challenge = CHALLENGES[site.unlockMethod];
 
   const settingsSummary = useMemo(() => {
-    const settings = site.challengeSettings;
     const parts: string[] = [];
     for (const [key, opt] of Object.entries(challenge.options)) {
       const value = settings[key as keyof typeof settings];
@@ -119,7 +129,7 @@ const SiteItem = memo(function SiteItem({
       }
     }
     return parts.length > 0 ? parts.join(", ") : null;
-  }, [site.challengeSettings, challenge.options]);
+  }, [challenge.options, settings]);
 
   return (
     <div
@@ -276,6 +286,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>({ statsEnabled: true });
   const [loading, setLoading] = useState(true);
   const [editingSite, setEditingSite] = useState<BlockedSite | null>(null);
+  const syncAvailable = isSyncAvailable();
 
   const [formName, setFormName] = useState("");
   const [formRules, setFormRules] = useState<PatternRule[]>([
@@ -288,7 +299,6 @@ export default function App() {
   const [formAutoRelock, setFormAutoRelock] = useState(
     String(DEFAULT_AUTO_RELOCK)
   );
-  const [formStrict, setFormStrict] = useState(false);
   const [formSchedule, setFormSchedule] = useState<Schedule>({
     enabled: false,
     days: [1, 2, 3, 4, 5],
@@ -303,7 +313,7 @@ export default function App() {
       getSettings(),
     ]);
     setSites(loadedSites);
-    setStats(loadedStats);
+    setStats(loadedStats.filter((stat) => stat.scope === "site"));
     setSettings(loadedSettings);
     setLoading(false);
   }, []);
@@ -318,7 +328,6 @@ export default function App() {
     setFormMethod("timer");
     setFormChallengeSettings(getDefaultChallengeSettings("timer"));
     setFormAutoRelock(String(DEFAULT_AUTO_RELOCK));
-    setFormStrict(false);
     setFormSchedule({
       enabled: false,
       days: [1, 2, 3, 4, 5],
@@ -360,22 +369,20 @@ export default function App() {
       challengeSettings: formChallengeSettings,
       autoRelockAfter: formAutoRelock ? parseInt(formAutoRelock) : null,
       enabled: true,
-      strict: formStrict,
       schedule: formSchedule,
     };
 
-    if (editingSite) {
-      await updateBlockedSite(editingSite.id, siteData);
-    } else {
-      const sites = await getBlockedSites();
-      const newSite = {
-        ...siteData,
-        id: Math.random().toString(36).substring(2, 10),
-        createdAt: Date.now(),
-      };
-      sites.push(newSite);
-      await browser.storage.local.set({ ["blockedSites"]: sites });
-    }
+      if (editingSite) {
+        await updateBlockedSite(editingSite.id, siteData);
+      } else {
+        const sites = await getBlockedSites();
+        const newSite = {
+          ...siteData,
+          id: Math.random().toString(36).substring(2, 10),
+          createdAt: Date.now(),
+        };
+        await saveBlockedSites([...sites, newSite]);
+      }
 
     resetForm();
     setView("main");
@@ -386,7 +393,6 @@ export default function App() {
     formMethod,
     formChallengeSettings,
     formAutoRelock,
-    formStrict,
     formSchedule,
     editingSite,
     resetForm,
@@ -394,17 +400,22 @@ export default function App() {
   ]);
 
   const handleEditSite = useCallback((site: BlockedSite) => {
+    const resolvedMethod = isUnlockMethod(site.unlockMethod)
+      ? site.unlockMethod
+      : DEFAULT_UNLOCK_METHOD;
+    const defaultSettings = getDefaultChallengeSettings(resolvedMethod);
+    const normalizedSettings = {
+      ...defaultSettings,
+      ...(isUnlockMethod(site.unlockMethod) ? site.challengeSettings : {}),
+    };
     setEditingSite(site);
     setFormName(site.name);
     setFormRules(
       site.rules.length > 0 ? site.rules : [{ pattern: "", allow: false }]
     );
-    setFormMethod(site.unlockMethod);
-    setFormChallengeSettings(
-      site.challengeSettings ?? getDefaultChallengeSettings(site.unlockMethod)
-    );
+    setFormMethod(resolvedMethod);
+    setFormChallengeSettings(normalizedSettings);
     setFormAutoRelock(site.autoRelockAfter ? String(site.autoRelockAfter) : "");
-    setFormStrict(!!site.strict);
     setFormSchedule(
       site.schedule || {
         enabled: false,
@@ -434,7 +445,11 @@ export default function App() {
       await Promise.all([
         saveBlockedSites(sites.filter((s) => s.id !== id)),
         browser.storage.local.set({
-          [STORAGE_KEYS.STATS]: stats.filter((s) => s.siteId !== id),
+          [STORAGE_KEYS.STATS]: stats.filter(
+            (stat) =>
+              stat.scope !== "site" ||
+              (stat.siteId ?? stat.key) !== id
+          ),
         }),
       ]);
       loadData();
@@ -512,7 +527,18 @@ export default function App() {
           </h1>
         </div>
         {view === "main" && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="secondary"
+              className="text-[10px] uppercase tracking-wide"
+              title={
+                syncAvailable
+                  ? "Sync storage available"
+                  : "Sync storage unavailable; using local storage"
+              }
+            >
+              {syncAvailable ? "Sync" : "Local"}
+            </Badge>
             <Button
               variant="ghost"
               size="icon-sm"
@@ -725,27 +751,6 @@ export default function App() {
               </p>
             </div>
 
-            <div className="flex items-center space-x-2 p-3 rounded-lg border border-border/50 bg-muted/20">
-              <Checkbox
-                id="strict"
-                checked={formStrict}
-                onCheckedChange={(c: boolean | "indeterminate") => setFormStrict(!!c)}
-              />
-              <div className="grid gap-1.5 leading-none">
-                <Label
-                  htmlFor="strict"
-                  className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  Strict Mode
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  Hide the unlock button (no way to bypass).
-                </p>
-              </div>
-            </div>
-
-
-
             <div className="space-y-3 pt-2 border-t border-border/30">
               <div className="flex items-center justify-between">
                 <div className="grid gap-0.5">
@@ -873,14 +878,17 @@ export default function App() {
             ) : (
               (() => {
                 const maxTime = Math.max(...stats.map((s) => s.timeSpentMs), 0);
-                return stats.map((stat) => (
-                  <StatItem
-                    key={stat.siteId}
-                    stat={stat}
-                    site={siteMap.get(stat.siteId)}
-                    maxTime={maxTime}
-                  />
-                ));
+                return stats.map((stat) => {
+                  const siteId = stat.siteId ?? stat.key;
+                  return (
+                    <StatItem
+                      key={siteId}
+                      stat={stat}
+                      site={siteMap.get(siteId)}
+                      maxTime={maxTime}
+                    />
+                  );
+                });
               })()
             )}
           </div>

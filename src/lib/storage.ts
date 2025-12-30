@@ -1,145 +1,125 @@
+import { STORAGE_KEYS } from "./consts";
+import { ensureStorageUpgraded, normalizeBlockedSites, normalizeStats } from "./storage/migrations";
 import type {
-  UnlockMethod,
-  ChallengeSettingsMap,
-} from "@/components/challenges";
+  BlockedSite,
+  Settings,
+  SiteStats,
+  Schedule,
+  PatternRule,
+  StatsScope,
+} from "./storage/types";
+import type { StorageArea, StorageKey, StorageShape, StoredValue } from "./storage/shared";
 
-export type { UnlockMethod, ChallengeSettingsMap };
-
-export interface PatternRule {
-  pattern: string; // URL pattern (e.g., "twitter.com", "*.reddit.com", "x.com/messages")
-  allow: boolean; // true = allow (whitelist), false = block
-}
-
-export interface BlockedSite {
-  id: string;
-  name: string; // Display name for the rule set
-  rules: PatternRule[]; // Multiple patterns with allow/deny
-  unlockMethod: UnlockMethod;
-  challengeSettings: ChallengeSettingsMap[UnlockMethod]; // Settings for the challenge
-  autoRelockAfter: number | null; // minutes before re-locking, null = no auto-relock
-  enabled: boolean;
-  createdAt: number;
-  strict?: boolean;
-  schedule?: Schedule;
-}
-
-export interface Schedule {
-  enabled: boolean;
-  days: number[];
-  start: string;
-  end: string;
-}
-
-export interface SiteStats {
-  siteId: string;
-  visitCount: number;
-  passedCount: number;
-  timeSpentMs: number; // time spent on site after unlocking
-  lastVisit: number;
-}
-
-export interface Settings {
-  statsEnabled: boolean;
-}
-
-import { DEFAULT_AUTO_RELOCK, STORAGE_KEYS } from "./consts";
+export type { PatternRule, BlockedSite, Schedule, SiteStats, Settings, StatsScope };
+export type { UnlockMethod, ChallengeSettingsMap } from "@/components/challenges";
+export { normalizeStats } from "./storage/migrations";
 
 export const defaultSettings: Settings = {
   statsEnabled: true,
 };
 
-// Storage keys
-/*
-const STORAGE_KEYS = {
-  BLOCKED_SITES: "blockedSites",
-  STATS: "siteStats",
-  SETTINGS: "settings",
-} as const;
-*/
+let syncBlockedForSession = false;
 
-// Generate a short random ID
-export function generateId(): string {
-  return Math.random().toString(36).substring(2, 10);
+function hasOwnKey(obj: object, key: string): boolean {
+  return Object.prototype.hasOwnProperty.call(obj, key);
 }
 
-// Generate annoying text to type
-export function generateAnnoyingText(): string {
-  return crypto.randomUUID();
+async function getFromArea<K extends StorageKey>(
+  area: StorageArea,
+  key: K
+): Promise<StoredValue<K>> {
+  const result = await browser.storage[area].get(key);
+  return {
+    found: hasOwnKey(result, key),
+    value: result[key] as StorageShape[K] | undefined,
+  };
 }
 
-const storage = {
-  get: async (keys: string | string[]) => {
-    try {
-      if (browser.storage.sync) {
-        return await browser.storage.sync.get(keys);
-      }
-      throw new Error("Sync storage unavailable");
-    } catch (e) {
-      console.warn("Sync storage failed, falling back to local:", e);
-      return await browser.storage.local.get(keys);
-    }
-  },
-  set: async (items: Record<string, any>) => {
-    try {
-      if (browser.storage.sync) {
-        return await browser.storage.sync.set(items);
-      }
-      throw new Error("Sync storage unavailable");
-    } catch (e) {
-      console.warn("Sync storage failed, falling back to local:", e);
-      return await browser.storage.local.set(items);
-    }
+function shouldUseSync(): boolean {
+  return isSyncAvailable() && !syncBlockedForSession;
+}
+
+async function getFromSync<K extends StorageKey>(
+  key: K
+): Promise<StoredValue<K>> {
+  if (!shouldUseSync()) return { found: false };
+  try {
+    return await getFromArea("sync", key);
+  } catch (error) {
+    syncBlockedForSession = true;
+    console.warn("Sync storage failed, falling back to local:", error);
+    return { found: false };
   }
-};
-// Singleton migration promise
-let migrationPromise: Promise<void> | null = null;
-
-async function migrateToSync() {
-  if (migrationPromise) return migrationPromise;
-
-  migrationPromise = (async () => {
-    try {
-      const localData = (await browser.storage.local.get([
-        STORAGE_KEYS.BLOCKED_SITES,
-        STORAGE_KEYS.SETTINGS,
-      ])) as Record<string, any>;
-
-      const syncData = (await storage.get([
-        STORAGE_KEYS.BLOCKED_SITES,
-        STORAGE_KEYS.SETTINGS,
-      ])) as Record<string, any>;
-
-      // If local data exists but sync data is empty, migrate
-      if (localData[STORAGE_KEYS.BLOCKED_SITES] && !syncData[STORAGE_KEYS.BLOCKED_SITES]) {
-        await storage.set({
-          [STORAGE_KEYS.BLOCKED_SITES]: localData[STORAGE_KEYS.BLOCKED_SITES],
-        });
-      }
-
-      if (localData[STORAGE_KEYS.SETTINGS] && !syncData[STORAGE_KEYS.SETTINGS]) {
-        await storage.set({
-          [STORAGE_KEYS.SETTINGS]: localData[STORAGE_KEYS.SETTINGS],
-        });
-      }
-    } catch (error) {
-      console.error("Migration failed:", error);
-    }
-  })();
-
-  return migrationPromise;
 }
 
-// Call migration once on module load
-migrateToSync();
+async function setToArea<K extends StorageKey>(
+  area: StorageArea,
+  key: K,
+  value: StorageShape[K]
+): Promise<void> {
+  const payload = { [key]: value } as Record<K, StorageShape[K]>;
+  await browser.storage[area].set(payload);
+}
+
+async function setWithFallback<K extends StorageKey>(
+  key: K,
+  value: StorageShape[K]
+): Promise<void> {
+  try {
+    if (!shouldUseSync()) {
+      await setToArea("local", key, value);
+      return;
+    }
+    if (browser.storage?.sync) {
+      await setToArea("sync", key, value);
+      return;
+    }
+    throw new Error("Sync storage unavailable");
+  } catch (error) {
+    syncBlockedForSession = true;
+    console.warn("Sync storage failed, falling back to local:", error);
+    await setToArea("local", key, value);
+  }
+}
+
+export function isSyncAvailable(): boolean {
+  return typeof browser !== "undefined" && !!browser.storage?.sync;
+}
+
+const migrationHelpers = {
+  getFromArea,
+  setToArea,
+  shouldUseSync,
+};
+
+async function getWithFallback<K extends StorageKey>(
+  key: K
+): Promise<StorageShape[K] | undefined> {
+  const syncResult = await getFromSync(key);
+  if (syncResult.found) return syncResult.value;
+
+  const localResult = await getFromArea("local", key);
+  if (localResult.found && localResult.value !== undefined && shouldUseSync()) {
+    void setToArea("sync", key, localResult.value).catch((error) => {
+      syncBlockedForSession = true;
+      console.warn("Sync storage failed, falling back to local:", error);
+    });
+  }
+
+  return localResult.value;
+}
 export async function getBlockedSites(): Promise<BlockedSite[]> {
-  const result = (await storage.get(
-    STORAGE_KEYS.BLOCKED_SITES
-  )) as Record<string, BlockedSite[] | undefined>;
-  return result[STORAGE_KEYS.BLOCKED_SITES] ?? [];
+  await ensureStorageUpgraded(migrationHelpers);
+  const stored = await getWithFallback(STORAGE_KEYS.BLOCKED_SITES);
+  const normalized = normalizeBlockedSites(stored);
+  if (normalized.changed) {
+    void setWithFallback(STORAGE_KEYS.BLOCKED_SITES, normalized.sites);
+  }
+  return normalized.sites;
 }
 
 export async function saveBlockedSites(sites: BlockedSite[]): Promise<void> {
-  await storage.set({ [STORAGE_KEYS.BLOCKED_SITES]: sites });
+  await setWithFallback(STORAGE_KEYS.BLOCKED_SITES, sites);
 }
 
 export async function addBlockedSite(
@@ -169,21 +149,23 @@ export async function updateBlockedSite(
 }
 
 export async function getStats(): Promise<SiteStats[]> {
-  const result = (await browser.storage.local.get(
-    STORAGE_KEYS.STATS
-  )) as Record<string, SiteStats[] | undefined>;
-  return result[STORAGE_KEYS.STATS] ?? [];
+  await ensureStorageUpgraded(migrationHelpers);
+  const result = await getFromArea("local", STORAGE_KEYS.STATS);
+  const normalized = normalizeStats(result.value);
+  if (normalized.changed) {
+    await setToArea("local", STORAGE_KEYS.STATS, normalized.stats);
+  }
+  return normalized.stats;
 }
 
 export async function getSettings(): Promise<Settings> {
-  const result = (await storage.get(
-    STORAGE_KEYS.SETTINGS
-  )) as Record<string, Settings | undefined>;
-  return { ...defaultSettings, ...(result[STORAGE_KEYS.SETTINGS] ?? {}) };
+  await ensureStorageUpgraded(migrationHelpers);
+  const stored = await getWithFallback(STORAGE_KEYS.SETTINGS);
+  return { ...defaultSettings, ...(stored ?? {}) };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {
-  await storage.set({ [STORAGE_KEYS.SETTINGS]: settings });
+  await setWithFallback(STORAGE_KEYS.SETTINGS, settings);
 }
 
 export function urlMatchesPattern(url: string, pattern: string): boolean {
@@ -273,8 +255,6 @@ export function isInSchedule(schedule: Schedule): boolean {
   const now = new Date();
   const day = now.getDay(); // 0-6 Sun-Sat
 
-  if (!schedule.days.includes(day)) return false;
-
   const currentMinutes = now.getHours() * 60 + now.getMinutes();
 
   const [startH, startM] = schedule.start.split(":").map(Number);
@@ -283,7 +263,22 @@ export function isInSchedule(schedule: Schedule): boolean {
   const [endH, endM] = schedule.end.split(":").map(Number);
   const endMinutes = endH * 60 + endM;
 
-  return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  if (startMinutes === endMinutes) {
+    return schedule.days.includes(day);
+  }
+
+  if (startMinutes < endMinutes) {
+    if (!schedule.days.includes(day)) return false;
+    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  }
+
+  const prevDay = (day + 6) % 7;
+  const inCurrentDayWindow =
+    schedule.days.includes(day) && currentMinutes >= startMinutes;
+  const inPrevDayWindow =
+    schedule.days.includes(prevDay) && currentMinutes <= endMinutes;
+
+  return inCurrentDayWindow || inPrevDayWindow;
 }
 
 export function urlMatchesSiteRules(url: string, site: BlockedSite): boolean {
