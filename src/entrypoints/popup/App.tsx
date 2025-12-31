@@ -206,12 +206,10 @@ const SiteItem = memo(function SiteItem({
 
 const StatItem = memo(function StatItem({
   stat,
-  site,
-  maxTime,
+  title,
 }: {
   stat: SiteStats;
-  site: BlockedSite | undefined;
-  maxTime: number;
+  title: string;
 }) {
   const passRate =
     stat.visitCount > 0
@@ -221,7 +219,7 @@ const StatItem = memo(function StatItem({
   return (
     <div className="p-3 rounded-lg bg-muted/30">
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium">{site?.name || "Unknown"}</span>
+        <span className="text-sm font-medium truncate">{title}</span>
       </div>
       <div className="grid grid-cols-3 gap-2 text-center">
         <div>
@@ -254,27 +252,6 @@ const StatItem = memo(function StatItem({
           <div className="text-xs text-muted-foreground">Time Wasted</div>
         </div>
       </div>
-
-      {/* Visual Bar */}
-      <div className="mt-3 space-y-1">
-        <div className="flex justify-between text-[10px] text-muted-foreground uppercase tracking-wider">
-          <span>Time Wasted</span>
-          <span>
-            {maxTime > 0
-              ? Math.round((stat.timeSpentMs / maxTime) * 100)
-              : 0}
-            % of max
-          </span>
-        </div>
-        <div className="h-2 bg-background/50 rounded-full overflow-hidden">
-          <div
-            className="h-full bg-primary/70 rounded-full"
-            style={{
-              width: `${maxTime > 0 ? (stat.timeSpentMs / maxTime) * 100 : 0}%`,
-            }}
-          />
-        </div>
-      </div>
     </div>
   );
 });
@@ -286,6 +263,7 @@ export default function App() {
   const [settings, setSettings] = useState<Settings>({ statsEnabled: true });
   const [loading, setLoading] = useState(true);
   const [editingSite, setEditingSite] = useState<BlockedSite | null>(null);
+  const [statsView, setStatsView] = useState<"filter" | "website">("filter");
   const syncAvailable = isSyncAvailable();
 
   const [formName, setFormName] = useState("");
@@ -313,7 +291,7 @@ export default function App() {
       getSettings(),
     ]);
     setSites(loadedSites);
-    setStats(loadedStats.filter((stat) => stat.scope === "site"));
+    setStats(loadedStats);
     setSettings(loadedSettings);
     setLoading(false);
   }, []);
@@ -493,6 +471,12 @@ export default function App() {
   const siteMap = useMemo(() => {
     return new Map(sites.map((s) => [s.id, s]));
   }, [sites]);
+
+  const statsForView = useMemo(() => {
+    return stats.filter((stat) =>
+      statsView === "filter" ? stat.scope === "site" : stat.scope === "domain"
+    );
+  }, [stats, statsView]);
 
   const isFormValid = useMemo(() => {
     return formName.trim() && formRules.some((r) => r.pattern.trim());
@@ -852,6 +836,26 @@ export default function App() {
 
         {view === "stats" && (
           <div className="space-y-3">
+            {settings.statsEnabled && (
+              <div className="flex items-center gap-2">
+                <Button
+                  variant={statsView === "filter" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatsView("filter")}
+                  className="flex-1"
+                >
+                  Per Filter
+                </Button>
+                <Button
+                  variant={statsView === "website" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setStatsView("website")}
+                  className="flex-1"
+                >
+                  Per Website
+                </Button>
+              </div>
+            )}
             {!settings.statsEnabled ? (
               <Card className="bg-muted/30">
                 <CardContent className="pt-4">
@@ -869,7 +873,7 @@ export default function App() {
                   </div>
                 </CardContent>
               </Card>
-            ) : stats.length === 0 ? (
+            ) : statsForView.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <IconChartBar className="size-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">No statistics yet</p>
@@ -877,15 +881,18 @@ export default function App() {
               </div>
             ) : (
               (() => {
-                const maxTime = Math.max(...stats.map((s) => s.timeSpentMs), 0);
-                return stats.map((stat) => {
+                return statsForView.map((stat) => {
+                  if (stat.scope === "domain") {
+                    const label = stat.domain ?? stat.key;
+                    return <StatItem key={`domain-${stat.key}`} stat={stat} title={label} />;
+                  }
                   const siteId = stat.siteId ?? stat.key;
+                  const label = siteMap.get(siteId)?.name ?? "Unknown";
                   return (
                     <StatItem
-                      key={siteId}
+                      key={`site-${siteId}`}
                       stat={stat}
-                      site={siteMap.get(siteId)}
-                      maxTime={maxTime}
+                      title={label}
                     />
                   );
                 });
