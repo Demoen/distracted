@@ -64,7 +64,7 @@ jobs:
       - name: submit to chrome web store
         run: |
           bunx wxt submit \
-            --chrome-zip .output/*-chrome.zip --chrome-publish-target default --chrome-skip-submit-review
+            --chrome-zip .output/*-chrome.zip --chrome-publish-target default
         env:
           CHROME_EXTENSION_ID: ${{ vars.CHROME_EXTENSION_ID }}
           CHROME_CLIENT_ID: ${{ vars.CHROME_CLIENT_ID }}
