@@ -1,7 +1,8 @@
-import { IconClock, IconHandStop, IconKeyboard } from "@tabler/icons-react";
+import { IconClock, IconHandStop, IconKeyboard, IconLock } from "@tabler/icons-react";
 import { TimerChallenge } from "./timer";
 import { HoldChallenge } from "./hold";
 import { TypeChallenge } from "./type";
+import { StrictChallenge } from "./strict";
 
 type ChallengeOptionValue = number | string | boolean;
 type ChallengeOptions = Record<string, ChallengeOptionValue>;
@@ -28,9 +29,7 @@ type Challenge<Options extends ChallengeOptions = ChallengeOptions> = {
   render: (props: ChallengeComponentProps<Options>) => React.ReactNode;
 };
 
-const define = <Options extends ChallengeOptions>(
-  challenge: Challenge<Options>
-) => challenge;
+const define = <Options extends ChallengeOptions>(challenge: Challenge<Options>) => challenge;
 
 export const CHALLENGES = {
   timer: define({
@@ -69,6 +68,14 @@ export const CHALLENGES = {
     options: {},
     render: (props) => <TypeChallenge {...props} />,
   }),
+  strict: define({
+    label: "Strict Mode",
+    icon: <IconLock className="size-5" />,
+    description: "No unlock method available",
+    title: "Strict Mode",
+    options: {},
+    render: (props) => <StrictChallenge {...props} />,
+  }),
 } as const;
 
 // Type exports for storage layer
@@ -84,7 +91,7 @@ export type ChallengeSettingsMap = {
 };
 
 export function getDefaultChallengeSettings<M extends UnlockMethod>(
-  method: M
+  method: M,
 ): ChallengeSettingsMap[M] {
   const challenge = CHALLENGES[method];
   const settings: Record<string, ChallengeOptionValue> = {};

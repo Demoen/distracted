@@ -16,7 +16,11 @@ import {
 	IconArrowLeft,
 	IconLockOpen,
 } from "@tabler/icons-react";
-import { CHALLENGES, type ChallengeSettingsMap } from "@/components/challenges";
+import {
+  CHALLENGES,
+  getDefaultChallengeSettings,
+  type UnlockMethod,
+} from "@/components/challenges";
 
 export default function BlockedPage() {
 	const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
