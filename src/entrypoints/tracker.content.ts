@@ -1,5 +1,6 @@
 export default defineContentScript({
   matches: ["<all_urls>"],
+  exclude: ["chrome"],
   async main() {
     const url = window.location.href;
     let domain: string | null = null;
