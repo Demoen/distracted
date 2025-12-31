@@ -6,11 +6,9 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import {
   IconClockHour5Filled,
-  IconCheck,
   IconX,
   IconArrowRight,
   IconArrowLeft,
@@ -18,7 +16,6 @@ import {
 } from "@tabler/icons-react";
 import {
   CHALLENGES,
-  type ChallengeSettingsMap,
   getDefaultChallengeSettings,
   type UnlockMethod,
 } from "@/components/challenges";
@@ -57,7 +54,7 @@ export default function BlockedPage() {
     setDomain(parsedDomain);
     siteIdRef.current = siteId;
 
-    (async () => {
+    void (async () => {
       try {
         const result = await browser.runtime.sendMessage({
           type: "GET_SITE_INFO",

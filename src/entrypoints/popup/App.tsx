@@ -113,16 +113,19 @@ const SiteItem = memo(function SiteItem({
     ? site.unlockMethod
     : DEFAULT_UNLOCK_METHOD;
   const challenge = CHALLENGES[resolvedMethod];
-  const settings = {
-    ...getDefaultChallengeSettings(resolvedMethod),
-    ...(isUnlockMethod(site.unlockMethod) ? site.challengeSettings : {}),
-  };
+  const settings = useMemo(
+    () => ({
+      ...getDefaultChallengeSettings(resolvedMethod),
+      ...(isUnlockMethod(site.unlockMethod) ? site.challengeSettings : {}),
+    }),
+    [resolvedMethod, site.unlockMethod, site.challengeSettings]
+  );
   const blockRules = site.rules.filter((r) => !r.allow);
   const allowRules = site.rules.filter((r) => r.allow);
 
   const settingsSummary = useMemo(() => {
     const parts: string[] = [];
-    for (const [key, opt] of Object.entries(challenge.options)) {
+    for (const key of Object.keys(challenge.options)) {
       const value = settings[key as keyof typeof settings];
       if (value !== undefined) {
         parts.push(`${value}${key === "duration" ? "s" : ""}`);
@@ -133,8 +136,9 @@ const SiteItem = memo(function SiteItem({
 
   return (
     <div
-      className={`group p-3 rounded-lg transition-all ${site.enabled ? "bg-muted/40" : "bg-muted/20 opacity-60"
-        }`}
+      className={`group p-3 rounded-lg transition-all ${
+        site.enabled ? "bg-muted/40" : "bg-muted/20 opacity-60"
+      }`}
     >
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
@@ -297,7 +301,7 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const resetForm = useCallback(() => {
@@ -350,21 +354,21 @@ export default function App() {
       schedule: formSchedule,
     };
 
-      if (editingSite) {
-        await updateBlockedSite(editingSite.id, siteData);
-      } else {
-        const sites = await getBlockedSites();
-        const newSite = {
-          ...siteData,
-          id: Math.random().toString(36).substring(2, 10),
-          createdAt: Date.now(),
-        };
-        await saveBlockedSites([...sites, newSite]);
-      }
+    if (editingSite) {
+      await updateBlockedSite(editingSite.id, siteData);
+    } else {
+      const sites = await getBlockedSites();
+      const newSite = {
+        ...siteData,
+        id: Math.random().toString(36).substring(2, 10),
+        createdAt: Date.now(),
+      };
+      await saveBlockedSites([...sites, newSite]);
+    }
 
     resetForm();
     setView("main");
-    loadData();
+    void loadData();
   }, [
     formName,
     formRules,
@@ -408,29 +412,24 @@ export default function App() {
   const handleToggleSite = useCallback(
     async (id: string, enabled: boolean) => {
       await updateBlockedSite(id, { enabled });
-      loadData();
+      void loadData();
     },
     [loadData]
   );
 
   const handleDeleteSite = useCallback(
     async (id: string) => {
-      const [sites, stats] = await Promise.all([
-        getBlockedSites(),
-        getStats(),
-      ]);
+      const [sites, stats] = await Promise.all([getBlockedSites(), getStats()]);
 
       await Promise.all([
         saveBlockedSites(sites.filter((s) => s.id !== id)),
         browser.storage.local.set({
           [STORAGE_KEYS.STATS]: stats.filter(
-            (stat) =>
-              stat.scope !== "site" ||
-              (stat.siteId ?? stat.key) !== id
+            (stat) => stat.scope !== "site" || (stat.siteId ?? stat.key) !== id
           ),
         }),
       ]);
-      loadData();
+      void loadData();
     },
     [loadData]
   );
@@ -443,7 +442,7 @@ export default function App() {
 
   const handleClearStats = useCallback(async () => {
     await browser.storage.local.set({ [STORAGE_KEYS.STATS]: [] });
-    loadData();
+    void loadData();
   }, [loadData]);
 
   const handleAddRule = useCallback(() => {
@@ -636,16 +635,18 @@ export default function App() {
                           getDefaultChallengeSettings(method)
                         );
                       }}
-                      className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${formMethod === method
-                        ? "bg-primary/15"
-                        : "bg-muted/30 hover:bg-muted/50"
-                        }`}
+                      className={`flex items-center gap-3 p-3 rounded-lg text-left transition-all ${
+                        formMethod === method
+                          ? "bg-primary/15"
+                          : "bg-muted/30 hover:bg-muted/50"
+                      }`}
                     >
                       <div
-                        className={`p-2 rounded-md ${formMethod === method
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted/50 text-muted-foreground"
-                          }`}
+                        className={`p-2 rounded-md ${
+                          formMethod === method
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted/50 text-muted-foreground"
+                        }`}
                       >
                         {challenge.icon}
                       </div>
@@ -686,25 +687,25 @@ export default function App() {
                           id={`option-${key}`}
                           type={
                             typeof (opt as { default: unknown }).default ===
-                              "number"
+                            "number"
                               ? "number"
                               : "text"
                           }
                           min={
                             typeof (opt as { default: unknown }).default ===
-                              "number"
+                            "number"
                               ? "1"
                               : undefined
                           }
                           value={String(
                             formChallengeSettings[
-                            key as keyof typeof formChallengeSettings
+                              key as keyof typeof formChallengeSettings
                             ] ?? (opt as { default: unknown }).default
                           )}
                           onChange={(e) => {
                             const value =
                               typeof (opt as { default: unknown }).default ===
-                                "number"
+                              "number"
                                 ? parseInt(e.target.value) || 0
                                 : e.target.value;
                             setFormChallengeSettings((prev) => ({
@@ -765,10 +766,11 @@ export default function App() {
                             : [...formSchedule.days, i];
                           setFormSchedule({ ...formSchedule, days: newDays });
                         }}
-                        className={`size-8 rounded-full text-xs font-medium transition-all ${formSchedule.days.includes(i)
-                          ? "bg-primary text-primary-foreground"
-                          : "bg-muted text-muted-foreground hover:bg-muted/80"
-                          }`}
+                        className={`size-8 rounded-full text-xs font-medium transition-all ${
+                          formSchedule.days.includes(i)
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground hover:bg-muted/80"
+                        }`}
                       >
                         {day}
                       </button>
@@ -884,7 +886,13 @@ export default function App() {
                 return statsForView.map((stat) => {
                   if (stat.scope === "domain") {
                     const label = stat.domain ?? stat.key;
-                    return <StatItem key={`domain-${stat.key}`} stat={stat} title={label} />;
+                    return (
+                      <StatItem
+                        key={`domain-${stat.key}`}
+                        stat={stat}
+                        title={label}
+                      />
+                    );
                   }
                   const siteId = stat.siteId ?? stat.key;
                   const label = siteMap.get(siteId)?.name ?? "Unknown";

@@ -27,7 +27,7 @@ export default defineContentScript({
                 }
                 startTracking();
             }
-        } catch (e) {
+        } catch {
             // Ignore errors (e.g. extension context invalidated)
         }
 

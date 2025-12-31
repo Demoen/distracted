@@ -150,9 +150,12 @@ function createMV3TimeTracker() {
   let pending = Promise.resolve();
 
   const queue = (fn: () => Promise<void>) => {
-    pending = pending.catch(() => {}).then(fn).catch((error) => {
-      console.error("[distracted] Time tracker error:", error);
-    });
+    pending = pending
+      .catch(() => {})
+      .then(fn)
+      .catch((error) => {
+        console.error("[distracted] Time tracker error:", error);
+      });
     return pending;
   };
 
@@ -186,10 +189,7 @@ function createMV3TimeTracker() {
     active.lastActiveAt = now;
   };
 
-  const setActiveFromTab = async (
-    tabId: number,
-    url?: string | null
-  ) => {
+  const setActiveFromTab = async (tabId: number, url?: string | null) => {
     const resolvedUrl = await resolveTabUrl(tabId, url);
     active.tabId = tabId;
     active.url = resolvedUrl ?? null;
@@ -369,14 +369,14 @@ export default defineBackground(() => {
         console.error("[distracted] Failed to sync rules:", err);
       });
       if (mv3Tracker) {
-        mv3Tracker.onRulesChanged();
+        void mv3Tracker.onRulesChanged();
       }
     }
 
     const settingsChanged = changes[STORAGE_KEYS.SETTINGS];
     if ((areaName === "local" || areaName === "sync") && settingsChanged) {
       if (mv3Tracker) {
-        mv3Tracker.onSettingsChanged();
+        void mv3Tracker.onSettingsChanged();
       } else {
         refreshStatsEnabled().catch((err) => {
           console.error("[distracted] Failed to refresh settings:", err);
@@ -459,7 +459,7 @@ export default defineBackground(() => {
   });
 
   browser.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-    (async () => {
+    void (async () => {
       try {
         switch (message.type) {
           case "CHECK_BLOCKED": {

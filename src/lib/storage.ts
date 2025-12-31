@@ -161,7 +161,7 @@ export async function getStats(): Promise<SiteStats[]> {
 export async function getSettings(): Promise<Settings> {
   await ensureStorageUpgraded(migrationHelpers);
   const stored = await getWithFallback(STORAGE_KEYS.SETTINGS);
-  return { ...defaultSettings, ...(stored ?? {}) };
+  return { ...defaultSettings, ...stored };
 }
 
 export async function saveSettings(settings: Settings): Promise<void> {

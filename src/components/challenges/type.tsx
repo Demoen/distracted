@@ -4,7 +4,7 @@ import { IconCheck } from "@tabler/icons-react";
 import type { ChallengeComponentProps } from "./index";
 
 export const TypeChallenge = memo(
-  ({ settings, onComplete }: ChallengeComponentProps<{}>) => {
+  ({ onComplete }: ChallengeComponentProps<{}>) => {
     const [targetText] = useState(() => crypto.randomUUID());
     const [inputText, setInputText] = useState("");
     const [completed, setCompleted] = useState(false);
