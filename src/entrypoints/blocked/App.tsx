@@ -10,6 +10,8 @@ import {
   IconLockOpen,
 } from "@tabler/icons-react";
 import { CHALLENGES } from "@/components/challenges";
+import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
+import { getClaudeBlockerStatus } from "@/lib/claude-blocker";
 
 export default function BlockedPage() {
   const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
@@ -110,6 +112,30 @@ export default function BlockedPage() {
       if (alreadyUnlocked) {
         window.location.href = originalUrl;
         return;
+      }
+
+      if (blockedSite.unlockMethod === "claude") {
+        const claudeSettings = blockedSite.challengeSettings as {
+          serverUrl?: string;
+        };
+        const result = await getClaudeBlockerStatus(
+          claudeSettings.serverUrl ?? "",
+        );
+        if (!result.active) {
+          const message =
+            result.reason === "invalid_url"
+              ? "Claude Blocker server URL is invalid."
+              : result.reason === "server_error"
+                ? `Claude Blocker server error${
+                    result.statusCode ? ` (${result.statusCode})` : ""
+                  }.`
+                : result.reason === "offline"
+                  ? "Claude Blocker server is offline."
+                  : "Claude Blocker reports Claude is idle.";
+          setError(message);
+          setUnlocking(false);
+          return;
+        }
       }
 
       const result = await browser.runtime.sendMessage({
@@ -256,6 +282,10 @@ export default function BlockedPage() {
                 onComplete: handleChallengeComplete,
               })}
             </div>
+          )}
+
+          {!alreadyUnlocked && challenge.instructions && (
+            <ChallengeInstructionsPanel instructions={challenge.instructions} />
           )}
 
           {challengeComplete && (

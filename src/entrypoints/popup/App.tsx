@@ -20,6 +20,7 @@ import {
   getDefaultChallengeSettings,
   type ChallengeSettingsMap,
 } from "@/components/challenges";
+import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -660,6 +661,12 @@ export default function App() {
                 </div>
               );
             })()}
+
+            {CHALLENGES[formMethod].instructions && (
+              <ChallengeInstructionsPanel
+                instructions={CHALLENGES[formMethod].instructions}
+              />
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="relock">Auto-relock (minutes)</Label>
