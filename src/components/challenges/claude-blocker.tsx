@@ -42,57 +42,64 @@ export const ClaudeBlockerChallenge = memo(
     const [completed, setCompleted] = useState(false);
     const checkingRef = useRef(false);
 
-    const checkStatus = useCallback(async () => {
-      if (completed) return;
-      if (checkingRef.current) return;
+    const checkStatus = useCallback(
+      async (mode: "auto" | "manual" = "manual") => {
+        if (completed) return;
+        if (checkingRef.current) return;
 
-      checkingRef.current = true;
-      setStatus("checking");
-      setMessage(null);
+        checkingRef.current = true;
+        if (mode === "manual") {
+          setStatus("checking");
+          setMessage(null);
+        }
 
-      if (!guard) {
-        setStatus("error");
-        setMessage("Claude Code guard unavailable.");
+        if (!guard) {
+          setStatus("error");
+          setMessage("Claude Code guard unavailable.");
+          checkingRef.current = false;
+          return;
+        }
+
+        const result = await guard.check(settings);
+        if (result.active) {
+          setStatus("active");
+          setCompleted(true);
+          onComplete();
+          checkingRef.current = false;
+          return;
+        }
+
+        if (result.reason === "invalid_url") {
+          setStatus("error");
+          setMessage("Enter a valid server URL.");
+          checkingRef.current = false;
+          return;
+        }
+
+        if (result.reason === "server_error") {
+          setStatus("error");
+          setMessage("Server error.");
+          checkingRef.current = false;
+          return;
+        }
+
+        if (result.reason === "offline") {
+          setStatus("error");
+          setMessage("Server offline or unreachable.");
+          checkingRef.current = false;
+          return;
+        }
+
+        setStatus("inactive");
+        if (result.reason === "waiting") {
+          setMessage("Claude Code is waiting for your input.");
+        } else if (mode === "manual") {
+          setMessage(null);
+        }
         checkingRef.current = false;
-        return;
-      }
-
-      const result = await guard.check(settings);
-      if (result.active) {
-        setStatus("active");
-        setCompleted(true);
-        onComplete();
-        checkingRef.current = false;
-        return;
-      }
-
-      if (result.reason === "invalid_url") {
-        setStatus("error");
-        setMessage("Enter a valid server URL.");
-        checkingRef.current = false;
-        return;
-      }
-
-      if (result.reason === "server_error") {
-        setStatus("error");
-        setMessage("Server error.");
-        checkingRef.current = false;
-        return;
-      }
-
-      if (result.reason === "offline") {
-        setStatus("error");
-        setMessage("Server offline or unreachable.");
-        checkingRef.current = false;
-        return;
-      }
-
-      setStatus("inactive");
-      if (result.reason === "waiting") {
-        setMessage("Claude Code is waiting for your input.");
-      }
-      checkingRef.current = false;
-    }, [completed, onComplete, settings]);
+      },
+      [completed, onComplete, settings],
+    );
 
     useEffect(() => {
       setCompleted(false);
@@ -101,41 +108,41 @@ export const ClaudeBlockerChallenge = memo(
     }, [settings.serverUrl]);
 
     useEffect(() => {
-      void checkStatus();
+      void checkStatus("auto");
     }, [checkStatus]);
 
     useEffect(() => {
       const interval = setInterval(() => {
-        void checkStatus();
-      }, 3000);
+        void checkStatus("auto");
+      }, 500);
       return () => clearInterval(interval);
     }, [checkStatus]);
 
     return (
       <div className="space-y-4">
-        {status === "active" && (
-          <div className="flex items-center justify-center gap-2 text-green-500">
-            <IconCheck className="size-5" />
-            <span>Claude Code is working. You can continue.</span>
-          </div>
-        )}
-
-        {status === "inactive" && (
-          <div className="flex items-center justify-center gap-2 text-muted-foreground">
-            <IconAlertTriangle className="size-5" />
-            <span>Claude Code is idle. Start a session to unlock.</span>
-          </div>
-        )}
-
-        {status === "error" && (
-          <div className="flex items-center justify-center gap-2 text-destructive">
-            <IconAlertTriangle className="size-5" />
-            <span>Unable to reach the server.</span>
-          </div>
-        )}
+        <div className="min-h-6 flex items-center justify-center gap-2">
+          {status === "active" ? (
+            <>
+              <IconCheck className="size-5 text-green-500" />
+              <span className="text-green-500">Claude Code is working. You can continue.</span>
+            </>
+          ) : status === "error" ? (
+            <>
+              <IconAlertTriangle className="size-5 text-destructive" />
+              <span className="text-destructive">Unable to reach the server.</span>
+            </>
+          ) : (
+            <>
+              <IconAlertTriangle className="size-5 text-muted-foreground" />
+              <span className="text-muted-foreground">
+                {message ?? "Claude Code is idle. Start a session to unlock."}
+              </span>
+            </>
+          )}
+        </div>
 
         <Button
-          onClick={checkStatus}
+          onClick={() => void checkStatus("manual")}
           className="w-full"
           variant={completed ? "outline" : "default"}
           disabled={status === "checking" || completed}
@@ -148,7 +155,7 @@ export const ClaudeBlockerChallenge = memo(
               : "Check Claude Code Status"}
         </Button>
 
-        {message && <p className="text-xs text-center text-muted-foreground">{message}</p>}
+        <p className="min-h-4 text-xs text-center text-muted-foreground">{message ?? "\u00A0"}</p>
       </div>
     );
   },
