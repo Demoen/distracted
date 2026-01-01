@@ -6,6 +6,14 @@ export type ClaudeBlockerCheckResult = {
   statusCode?: number;
 };
 
+export type ClaudeBlockerStateMessage = {
+  type: "state";
+  blocked?: boolean;
+  sessions?: number;
+  working?: number;
+  waitingForInput?: number;
+};
+
 export function resolveClaudeBlockerStatusUrl(serverUrl: string): string | null {
   const trimmed = serverUrl.trim();
   if (!trimmed) return null;
@@ -15,6 +23,39 @@ export function resolveClaudeBlockerStatusUrl(serverUrl: string): string | null 
   } catch {
     return null;
   }
+}
+
+export function resolveClaudeBlockerWebSocketUrl(serverUrl: string): string | null {
+  const trimmed = serverUrl.trim();
+  if (!trimmed) return null;
+  try {
+    const base = trimmed.match(/^https?:\/\//) ? trimmed : `http://${trimmed}`;
+    const url = new URL(base);
+    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
+    url.pathname = "/ws";
+    url.search = "";
+    url.hash = "";
+    return url.toString();
+  } catch {
+    return null;
+  }
+}
+
+export function parseClaudeBlockerStateMessage(payload: unknown): ClaudeBlockerCheckResult | null {
+  if (!payload || typeof payload !== "object") return null;
+  const data = payload as ClaudeBlockerStateMessage;
+  if (data.type !== "state") return null;
+
+  const working = typeof data.working === "number" ? data.working : 0;
+  const blocked = typeof data.blocked === "boolean" ? data.blocked : working === 0;
+  const active = !blocked && working > 0;
+
+  return {
+    active,
+    blocked,
+    working,
+    reason: active ? undefined : "idle",
+  };
 }
 
 export async function getClaudeBlockerStatus(serverUrl: string): Promise<ClaudeBlockerCheckResult> {

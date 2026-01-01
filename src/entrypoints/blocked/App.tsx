@@ -11,7 +11,7 @@ import {
 } from "@tabler/icons-react";
 import { CHALLENGES } from "@/components/challenges";
 import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
-import { getClaudeBlockerStatus } from "@/lib/claude-blocker";
+import { getUnlockGuard, isContinuousUnlockMethod } from "@/lib/unlock-guards";
 
 export default function BlockedPage() {
   const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
@@ -80,7 +80,11 @@ export default function BlockedPage() {
   }, []);
 
   useEffect(() => {
-    const handleMessage = (message: { type: string; siteId?: string; expiresAt?: number }) => {
+    const handleMessage = (message: {
+      type: string;
+      siteId?: string;
+      expiresAt?: number | null;
+    }) => {
       if (!siteIdRef.current) return;
 
       if (message.type === "SITE_UNLOCKED" && message.siteId === siteIdRef.current) {
@@ -114,25 +118,15 @@ export default function BlockedPage() {
         return;
       }
 
-      if (blockedSite.unlockMethod === "claude") {
-        const claudeSettings = blockedSite.challengeSettings as {
-          serverUrl?: string;
-        };
-        const result = await getClaudeBlockerStatus(claudeSettings.serverUrl ?? "");
-        if (!result.active) {
-          const message =
-            result.reason === "invalid_url"
-              ? "Claude Blocker server URL is invalid."
-              : result.reason === "server_error"
-                ? `Claude Blocker server error${
-                    result.statusCode ? ` (${result.statusCode})` : ""
-                  }.`
-                : result.reason === "offline"
-                  ? "Claude Blocker server is offline."
-                  : "Claude Blocker reports Claude is idle.";
-          setError(message);
-          setUnlocking(false);
-          return;
+      if (isContinuousUnlockMethod(blockedSite.unlockMethod)) {
+        const guard = getUnlockGuard(blockedSite.unlockMethod);
+        if (guard) {
+          const state = await guard.check(blockedSite.challengeSettings);
+          if (!state.active) {
+            setError(state.message ?? "Unlock condition not met.");
+            setUnlocking(false);
+            return;
+          }
         }
       }
 
@@ -299,12 +293,14 @@ export default function BlockedPage() {
             </Button>
           )}
 
-          {blockedSite.autoRelockAfter && !alreadyUnlocked && (
-            <p className="text-xs text-center text-muted-foreground">
-              Access will expire after {blockedSite.autoRelockAfter} minute
-              {blockedSite.autoRelockAfter > 1 ? "s" : ""}
-            </p>
-          )}
+          {blockedSite.autoRelockAfter &&
+            !alreadyUnlocked &&
+            !isContinuousUnlockMethod(blockedSite.unlockMethod) && (
+              <p className="text-xs text-center text-muted-foreground">
+                Access will expire after {blockedSite.autoRelockAfter} minute
+                {blockedSite.autoRelockAfter > 1 ? "s" : ""}
+              </p>
+            )}
         </CardContent>
       </Card>
 
