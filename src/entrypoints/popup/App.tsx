@@ -21,6 +21,7 @@ import {
   type ChallengeSettingsMap,
 } from "@/components/challenges";
 import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
+import { ClaudeBlockerDebug } from "@/components/challenges/claude-blocker";
 import { isContinuousUnlockMethod } from "@/lib/unlock-guards";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -665,7 +666,19 @@ export default function App() {
             })()}
 
             {CHALLENGES[formMethod].instructions && (
-              <ChallengeInstructionsPanel instructions={CHALLENGES[formMethod].instructions} />
+              <ChallengeInstructionsPanel instructions={CHALLENGES[formMethod].instructions}>
+                {formMethod === "claude" && (
+                  <ClaudeBlockerDebug
+                    settings={
+                      formChallengeSettings as {
+                        serverUrl: string;
+                        allowWhileWaitingForInput?: boolean;
+                      }
+                    }
+                    onComplete={() => {}}
+                  />
+                )}
+              </ChallengeInstructionsPanel>
             )}
 
             {!isContinuousUnlockMethod(formMethod) ? (

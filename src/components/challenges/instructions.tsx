@@ -3,11 +3,13 @@ import type { ChallengeInstructions } from "./index";
 type ChallengeInstructionsPanelProps = {
   instructions: ChallengeInstructions;
   className?: string;
+  children?: React.ReactNode;
 };
 
 export function ChallengeInstructionsPanel({
   instructions,
   className,
+  children,
 }: ChallengeInstructionsPanelProps) {
   const { title = "Setup instructions", summary, steps = [], commands = [], note } = instructions;
 
@@ -31,6 +33,7 @@ export function ChallengeInstructionsPanel({
           </pre>
         )}
         {note && <p>{note}</p>}
+        {children && <div className="pt-2">{children}</div>}
       </div>
     </details>
   );

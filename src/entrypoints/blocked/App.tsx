@@ -12,6 +12,7 @@ import {
 import { CHALLENGES } from "@/components/challenges";
 import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
 import { getUnlockGuard, isContinuousUnlockMethod } from "@/lib/unlock-guards";
+import { ClaudeBlockerDebug } from "@/components/challenges/claude-blocker";
 
 export default function BlockedPage() {
   const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
@@ -277,7 +278,16 @@ export default function BlockedPage() {
           )}
 
           {!alreadyUnlocked && challenge.instructions && (
-            <ChallengeInstructionsPanel instructions={challenge.instructions} />
+            <ChallengeInstructionsPanel instructions={challenge.instructions}>
+              {blockedSite.unlockMethod === "claude" && (
+                <ClaudeBlockerDebug
+                  settings={
+                    challengeSettings as { serverUrl: string; allowWhileWaitingForInput?: boolean }
+                  }
+                  onComplete={() => {}}
+                />
+              )}
+            </ChallengeInstructionsPanel>
           )}
 
           {challengeComplete && (
