@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, memo } from "react";
+import { useCallback, useEffect, useRef, useState, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { IconAlertTriangle, IconCheck, IconRefresh } from "@tabler/icons-react";
 import { getUnlockGuard } from "@/lib/unlock-guards";
@@ -40,16 +40,20 @@ export const ClaudeBlockerChallenge = memo(
     const [status, setStatus] = useState<ClaudeBlockerStatus>("idle");
     const [message, setMessage] = useState<string | null>(null);
     const [completed, setCompleted] = useState(false);
+    const checkingRef = useRef(false);
 
     const checkStatus = useCallback(async () => {
       if (completed) return;
+      if (checkingRef.current) return;
 
+      checkingRef.current = true;
       setStatus("checking");
       setMessage(null);
 
       if (!guard) {
         setStatus("error");
         setMessage("Claude Code guard unavailable.");
+        checkingRef.current = false;
         return;
       }
 
@@ -58,24 +62,28 @@ export const ClaudeBlockerChallenge = memo(
         setStatus("active");
         setCompleted(true);
         onComplete();
+        checkingRef.current = false;
         return;
       }
 
       if (result.reason === "invalid_url") {
         setStatus("error");
         setMessage("Enter a valid server URL.");
+        checkingRef.current = false;
         return;
       }
 
       if (result.reason === "server_error") {
         setStatus("error");
         setMessage("Server error.");
+        checkingRef.current = false;
         return;
       }
 
       if (result.reason === "offline") {
         setStatus("error");
         setMessage("Server offline or unreachable.");
+        checkingRef.current = false;
         return;
       }
 
@@ -83,6 +91,7 @@ export const ClaudeBlockerChallenge = memo(
       if (result.reason === "waiting") {
         setMessage("Claude Code is waiting for your input.");
       }
+      checkingRef.current = false;
     }, [completed, onComplete, settings]);
 
     useEffect(() => {
@@ -93,6 +102,13 @@ export const ClaudeBlockerChallenge = memo(
 
     useEffect(() => {
       void checkStatus();
+    }, [checkStatus]);
+
+    useEffect(() => {
+      const interval = setInterval(() => {
+        void checkStatus();
+      }, 3000);
+      return () => clearInterval(interval);
     }, [checkStatus]);
 
     return (
