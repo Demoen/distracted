@@ -21,7 +21,7 @@ import {
 } from "@/lib/challenges/manifest";
 import { CHALLENGE_UI } from "@/components/challenges/registry";
 import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
-import { ClaudeBlockerDebug } from "@/components/challenges/claude-blocker";
+import { AiAgentDebug } from "@/components/challenges/ai-agent";
 import { isContinuousUnlockMethod } from "@/lib/unlock-guards";
 import type { OptionDefinition } from "@/lib/challenges/options";
 import { Button } from "@/components/ui/button";
@@ -891,7 +891,7 @@ export default function App() {
             {CHALLENGE_UI[formMethod].instructions && (
               <ChallengeInstructionsPanel instructions={CHALLENGE_UI[formMethod].instructions}>
                 {formMethod === "claude" && (
-                  <ClaudeBlockerDebug
+                  <AiAgentDebug
                     settings={
                       formChallengeSettings as {
                         serverUrl: string;

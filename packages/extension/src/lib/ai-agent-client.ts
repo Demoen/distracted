@@ -1,4 +1,4 @@
-export type ClaudeBlockerCheckResult = {
+export type AiAgentCheckResult = {
   active: boolean;
   working: number;
   waitingForInput: number;
@@ -7,7 +7,7 @@ export type ClaudeBlockerCheckResult = {
   statusCode?: number;
 };
 
-export type ClaudeBlockerStateMessage = {
+export type AiAgentStateMessage = {
   type: "state";
   blocked?: boolean;
   sessions?: number;
@@ -15,7 +15,7 @@ export type ClaudeBlockerStateMessage = {
   waitingForInput?: number;
 };
 
-function resolveClaudeBlockerStatusUrl(serverUrl: string): string | null {
+export function resolveAiAgentStatusUrl(serverUrl: string): string | null {
   const trimmed = serverUrl.trim();
   if (!trimmed) return null;
   try {
@@ -26,7 +26,7 @@ function resolveClaudeBlockerStatusUrl(serverUrl: string): string | null {
   }
 }
 
-export function resolveClaudeBlockerWebSocketUrl(serverUrl: string): string | null {
+export function resolveAiAgentWebSocketUrl(serverUrl: string): string | null {
   const trimmed = serverUrl.trim();
   if (!trimmed) return null;
   try {
@@ -42,9 +42,9 @@ export function resolveClaudeBlockerWebSocketUrl(serverUrl: string): string | nu
   }
 }
 
-export function parseClaudeBlockerStateMessage(payload: unknown): ClaudeBlockerCheckResult | null {
+export function parseAiAgentStateMessage(payload: unknown): AiAgentCheckResult | null {
   if (!payload || typeof payload !== "object") return null;
-  const data = payload as ClaudeBlockerStateMessage;
+  const data = payload as AiAgentStateMessage;
   if (data.type !== "state") return null;
 
   const working = typeof data.working === "number" ? data.working : 0;
@@ -61,8 +61,8 @@ export function parseClaudeBlockerStateMessage(payload: unknown): ClaudeBlockerC
   };
 }
 
-export async function getClaudeBlockerStatus(serverUrl: string): Promise<ClaudeBlockerCheckResult> {
-  const statusUrl = resolveClaudeBlockerStatusUrl(serverUrl);
+export async function getAiAgentStatus(serverUrl: string): Promise<AiAgentCheckResult> {
+  const statusUrl = resolveAiAgentStatusUrl(serverUrl);
   if (!statusUrl) {
     return {
       active: false,

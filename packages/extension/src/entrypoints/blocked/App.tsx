@@ -12,7 +12,7 @@ import {
 import { CHALLENGE_UI } from "@/components/challenges/registry";
 import { ChallengeInstructionsPanel } from "@/components/challenges/instructions";
 import { getUnlockGuard, isContinuousUnlockMethod } from "@/lib/unlock-guards";
-import { ClaudeBlockerDebug } from "@/components/challenges/claude-blocker";
+import { AiAgentDebug } from "@/components/challenges/ai-agent";
 
 export default function BlockedPage() {
   const [blockedSite, setBlockedSite] = useState<BlockedSite | null>(null);
@@ -290,7 +290,7 @@ export default function BlockedPage() {
           {!alreadyUnlocked && challenge.instructions && (
             <ChallengeInstructionsPanel instructions={challenge.instructions}>
               {blockedSite.unlockMethod === "claude" && (
-                <ClaudeBlockerDebug
+                <AiAgentDebug
                   settings={
                     challengeSettings as { serverUrl: string; allowWhileWaitingForInput?: boolean }
                   }
