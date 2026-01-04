@@ -2,7 +2,12 @@ import { emitKeypressEvents } from "node:readline";
 
 import { UI } from "@/lib/ui";
 
-import type { AgentType, SetupStatus } from "./types";
+type AgentType = "claude" | "opencode";
+
+type SetupStatus = {
+  claude: boolean;
+  opencode: boolean;
+};
 import { isClaudeConfigured, removeClaude, setupClaude } from "./claude";
 import { isOpenCodeConfigured, removeOpenCode, setupOpenCode } from "./opencode";
 
@@ -11,14 +16,14 @@ const AGENT_OPTIONS: { id: AgentType; label: string }[] = [
   { id: "opencode", label: "OpenCode (~/.config/opencode/plugin/)" },
 ];
 
-async function interactiveSelectAgents(prompt: string): Promise<AgentType[]> {
+async function selectAgents(prompt: string, defaultSelected: AgentType[]): Promise<AgentType[]> {
   if (!process.stdin.isTTY) {
     UI.println(UI.Style.TEXT_DIM + "Non-interactive shell detected." + UI.Style.TEXT_NORMAL);
     return [];
   }
 
   let cursor = 0;
-  const selected = new Set<AgentType>(AGENT_OPTIONS.map((o) => o.id));
+  const selected = new Set<AgentType>(defaultSelected);
 
   const render = () => {
     process.stderr.write("\x1b[2J\x1b[H");
@@ -28,7 +33,8 @@ async function interactiveSelectAgents(prompt: string): Promise<AgentType[]> {
     for (let i = 0; i < AGENT_OPTIONS.length; i++) {
       const opt = AGENT_OPTIONS[i];
       const isSelected = selected.has(opt.id);
-      const prefix = i === cursor ? UI.Style.TEXT_HIGHLIGHT_BOLD + ">" + UI.Style.TEXT_NORMAL : " ";
+      const prefix =
+        i === cursor ? UI.Style.TEXT_HIGHLIGHT_BOLD + ">" + UI.Style.TEXT_NORMAL : " ";
       const checkbox = isSelected ? "[x]" : "[ ]";
       UI.println(`${prefix} ${checkbox} ${opt.label}`);
     }
@@ -118,8 +124,10 @@ export async function removeAgent(agent: AgentType): Promise<void> {
 }
 
 export async function interactiveSetup(port: number): Promise<void> {
-  const agents = await interactiveSelectAgents("? Select AI coding agent(s) to configure:");
-  if (agents.length === 0) return;
+  const agents = await selectAgents(
+    "? Select AI coding agent(s) to configure:",
+    AGENT_OPTIONS.map((o) => o.id),
+  );
 
   for (const agent of agents) {
     await setupAgent(agent, port);
@@ -141,78 +149,9 @@ export async function interactiveRemove(): Promise<void> {
     return;
   }
 
-  let cursor = 0;
-  const selected = new Set<AgentType>(defaultSelected);
+  const agents = await selectAgents("? Select AI coding agent(s) to remove:", defaultSelected);
 
-  const render = () => {
-    process.stderr.write("\x1b[2J\x1b[H");
-    UI.println("? Select AI coding agent(s) to remove:");
-    UI.empty();
-
-    for (let i = 0; i < AGENT_OPTIONS.length; i++) {
-      const opt = AGENT_OPTIONS[i];
-      const isSelected = selected.has(opt.id);
-      const prefix = i === cursor ? UI.Style.TEXT_HIGHLIGHT_BOLD + ">" + UI.Style.TEXT_NORMAL : " ";
-      const checkbox = isSelected ? "[x]" : "[ ]";
-      UI.println(`${prefix} ${checkbox} ${opt.label}`);
-    }
-
-    UI.empty();
-    UI.println(UI.Style.TEXT_DIM + "Use ↑/↓ to move, space to toggle, enter to confirm" + UI.Style.TEXT_NORMAL);
-  };
-
-  emitKeypressEvents(process.stdin);
-  const previousRawMode = process.stdin.isRaw ?? false;
-  process.stdin.setRawMode(true);
-  process.stdin.resume();
-
-  render();
-
-  await new Promise<void>((resolve, reject) => {
-    const onKeypress = (_str: string, key: { name?: string; ctrl?: boolean }) => {
-      if (key.ctrl && key.name === "c") {
-        cleanup();
-        reject(new UI.CancelledError(undefined));
-        return;
-      }
-
-      if (key.name === "up") {
-        cursor = (cursor - 1 + AGENT_OPTIONS.length) % AGENT_OPTIONS.length;
-        render();
-        return;
-      }
-
-      if (key.name === "down") {
-        cursor = (cursor + 1) % AGENT_OPTIONS.length;
-        render();
-        return;
-      }
-
-      if (key.name === "space") {
-        const id = AGENT_OPTIONS[cursor].id;
-        if (selected.has(id)) selected.delete(id);
-        else selected.add(id);
-        render();
-        return;
-      }
-
-      if (key.name === "return") {
-        cleanup();
-        resolve();
-      }
-    };
-
-    const cleanup = () => {
-      process.stdin.off("keypress", onKeypress);
-      process.stdin.setRawMode(previousRawMode);
-      process.stdin.pause();
-      process.stderr.write("\x1b[2J\x1b[H");
-    };
-
-    process.stdin.on("keypress", onKeypress);
-  });
-
-  for (const agent of selected) {
+  for (const agent of agents) {
     await removeAgent(agent);
   }
 }

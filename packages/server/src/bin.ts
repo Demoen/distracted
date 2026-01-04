@@ -1,15 +1,16 @@
 import { cac } from "cac";
 import { UI } from "@/lib/ui";
 import { DEFAULT_PORT } from "./types";
-import type { AgentType } from "./setup/types";
 import {
   getSetupStatus,
   interactiveRemove,
   interactiveSetup,
   removeAgent,
   setupAgent,
-} from "./setup";
+} from "./setup/index";
 import { startServer } from "./server";
+
+type AgentType = Parameters<typeof setupAgent>[0];
 
 function parseAgentSelection(input: unknown): AgentType[] | null {
   if (input === true || input === undefined) return null;
