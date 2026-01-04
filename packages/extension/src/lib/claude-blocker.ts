@@ -74,7 +74,10 @@ export async function getClaudeBlockerStatus(serverUrl: string): Promise<ClaudeB
   }
 
   try {
-    const response = await fetch(statusUrl, { cache: "no-store" });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 2000);
+    const response = await fetch(statusUrl, { cache: "no-store", signal: controller.signal });
+    clearTimeout(timeout);
     if (!response.ok) {
       return {
         active: false,

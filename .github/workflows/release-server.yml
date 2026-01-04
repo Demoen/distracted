@@ -78,10 +78,7 @@ jobs:
 
       - name: Publish to NPM
         working-directory: packages/server
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
-        run: |
-          npm publish --access public
+        run: npm publish --access public
 
       - name: Commit version change
         if: github.event_name == 'workflow_dispatch'

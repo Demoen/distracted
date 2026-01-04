@@ -112,9 +112,11 @@ export default function BlockedPage() {
     if (!blockedSite || !originalUrl) return;
 
     setUnlocking(true);
+    let navigationStarted = false;
 
     try {
       if (alreadyUnlocked) {
+        navigationStarted = true;
         window.location.href = originalUrl;
         return;
       }
@@ -146,6 +148,7 @@ export default function BlockedPage() {
           });
         }
 
+        navigationStarted = true;
         window.location.href = originalUrl;
       } else {
         setError(result.error || "Failed to unlock");
@@ -155,6 +158,13 @@ export default function BlockedPage() {
       console.error("[distracted] Error unlocking:", err);
       setError("Failed to unlock site");
       setUnlocking(false);
+    } finally {
+      // If navigation doesn't happen (e.g. browser blocks it), don't leave the UI stuck forever.
+      if (!navigationStarted) {
+        setUnlocking(false);
+      } else {
+        setTimeout(() => setUnlocking(false), 5000);
+      }
     }
   }, [blockedSite, originalUrl, statsEnabled, alreadyUnlocked]);
 

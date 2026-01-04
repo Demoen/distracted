@@ -36,20 +36,56 @@ type GuardEntry = {
   settings: unknown;
 };
 
-const offscreenApi = (globalThis as { chrome?: { offscreen?: any } }).chrome?.offscreen;
+// MV3-only (Chrome): WXT provides typings for `browser.offscreen`.
+// Avoid `globalThis` shims/`any` here so type checking stays strict.
+const offscreenApi = isMV3 ? browser.offscreen : undefined;
+
+function isNoOffscreenDocumentError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+  return message.includes("No current offscreen document");
+}
+
+function isReceivingEndDoesNotExistError(error: unknown): boolean {
+  const message =
+    error instanceof Error
+      ? error.message
+      : typeof error === "string"
+        ? error
+        : JSON.stringify(error);
+  return (
+    message.includes("Receiving end does not exist") ||
+    message.includes("Could not establish connection") ||
+    message.includes("No current offscreen document")
+  );
+}
 
 async function ensureOffscreenDocument(): Promise<void> {
   if (!isMV3 || !offscreenApi) return;
-  const hasDocument = (await offscreenApi.hasDocument?.()) as boolean | undefined;
-  if (hasDocument) return;
+  try {
+    const hasDocument = (await offscreenApi.hasDocument()) as boolean | undefined;
+    if (hasDocument) return;
+  } catch (error) {
+    // Treat errors as "no document" and attempt to create one.
+    console.warn("[distracted] offscreen.hasDocument failed:", error);
+  }
 
-  await offscreenApi.createDocument?.({
-    url: browser.runtime.getURL(
-      "/offscreen.html" as unknown as Parameters<typeof browser.runtime.getURL>[0],
-    ),
-    reasons: ["WORKERS"],
-    justification: "Maintain unlock guards that require real-time server state via WebSocket.",
-  });
+  try {
+    await offscreenApi.createDocument({
+      url: browser.runtime.getURL(
+        "/offscreen.html" as unknown as Parameters<typeof browser.runtime.getURL>[0],
+      ),
+      reasons: ["WORKERS"],
+      justification: "Maintain unlock guards that require real-time server state via WebSocket.",
+    });
+  } catch (error) {
+    // Chrome can be flaky here; if the document was created concurrently, this is safe to ignore.
+    console.warn("[distracted] offscreen.createDocument failed:", error);
+  }
 }
 
 async function maybeCloseOffscreenDocument(): Promise<void> {
@@ -57,9 +93,16 @@ async function maybeCloseOffscreenDocument(): Promise<void> {
   const session = await browser.storage.session.get();
   const hasGuards = Object.keys(session).some((key) => key.startsWith(GUARD_PREFIX));
   if (!hasGuards) {
-    const hasDocument = (await offscreenApi.hasDocument?.()) as boolean | undefined;
-    if (hasDocument) {
-      await offscreenApi.closeDocument?.();
+    try {
+      const hasDocument = (await offscreenApi.hasDocument()) as boolean | undefined;
+      if (hasDocument) {
+        await offscreenApi.closeDocument();
+      }
+    } catch (error) {
+      // If the document is already gone, treat close as a no-op.
+      if (!isNoOffscreenDocumentError(error)) {
+        console.warn("[distracted] offscreen.closeDocument failed:", error);
+      }
     }
   }
 }
@@ -135,6 +178,24 @@ async function startGuardForSite(site: BlockedSite): Promise<void> {
         pollIntervalMs: guard.pollIntervalMs,
       });
     } catch (error) {
+      // MV3 service worker/offscreen can race; retry once after ensuring document exists.
+      if (isReceivingEndDoesNotExistError(error)) {
+        try {
+          await ensureOffscreenDocument();
+          await browser.runtime.sendMessage({
+            type: "GUARD_START",
+            siteId: entry.siteId,
+            method: entry.method,
+            settings: entry.settings,
+            heartbeatMs: GUARD_HEARTBEAT_MS,
+            pollIntervalMs: guard.pollIntervalMs,
+          });
+          return;
+        } catch (retryError) {
+          console.warn("[distracted] Failed to start guard in offscreen (retry):", retryError);
+          return;
+        }
+      }
       console.warn("[distracted] Failed to start guard in offscreen:", error);
     }
   } else {
@@ -152,7 +213,10 @@ async function stopGuardForSite(siteId: string): Promise<void> {
         siteId,
       });
     } catch (error) {
-      console.warn("[distracted] Failed to stop guard in offscreen:", error);
+      // If offscreen isn't around anymore, stopping is effectively complete.
+      if (!isReceivingEndDoesNotExistError(error)) {
+        console.warn("[distracted] Failed to stop guard in offscreen:", error);
+      }
     }
     await maybeCloseOffscreenDocument();
   } else {
