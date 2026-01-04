@@ -31,10 +31,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: lint
-        run: bun run --cwd packages/extension lint:ci
-
-      - name: type check
-        run: bun run --cwd packages/extension compile
+        run: bun run lint:ci
 
       - name: build extension
         run: |

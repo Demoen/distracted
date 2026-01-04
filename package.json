@@ -4,15 +4,32 @@
   "version": "0.0.0",
   "description": "Monorepo workspace for distracted.",
   "type": "module",
-  "workspaces": [
-    "packages/*"
-  ],
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ],
+    "catalog": {
+      "typescript": "^5.9.3",
+      "@typescript/native-preview": "^7.0.0-dev",
+      "oxfmt": "^0.21.0",
+      "oxlint": "^1.36.0",
+      "oxlint-tsgolint": "^0.10.1"
+    }
+  },
   "scripts": {
-    "lint": "bun run lint",
-    "lint:fix": "bun run lint:fix",
-    "lint:ci": "bun run lint:ci",
-    "format": "bun run format",
-    "knip": "bun run knip",
-    "check": "bun run check"
+    "lint": "bun run --workspaces --if-present lint",
+    "lint:fix": "bun run --workspaces --if-present lint:fix",
+    "lint:ci": "bun run --workspaces --if-present lint:ci",
+    "format": "bun run --workspaces --if-present format",
+    "knip": "bun run --workspaces --if-present knip",
+    "check": "bun run --workspaces --if-present check",
+    "clean": "rm -rf node_modules && rm -rf packages/*/node_modules && bun run --workspaces --if-present clean"
+  },
+  "devDependencies": {
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:"
   }
 }

@@ -30,13 +30,14 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsgo --noEmit",
-    "lint": "oxlint --type-aware",
-    "lint:fix": "oxlint --type-aware --fix",
-    "lint:ci": "oxlint --type-aware --format github",
+    "lint": "oxlint --type-aware --type-check",
+    "lint:fix": "oxlint --type-aware --type-check --fix",
+    "lint:ci": "oxlint --type-aware --type-check --format github",
     "format": "oxfmt",
     "prepare": "wxt prepare",
     "knip": "knip",
-    "check": "bun run lint:fix && bun run format && bun run compile && bun run knip"
+    "check": "bun run lint:fix && bun run format && bun run knip",
+    "clean": "rm -rf .output .wxt"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
@@ -57,13 +58,13 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
-    "@typescript/native-preview": "^7.0.0-dev",
     "@wxt-dev/module-react": "^1.1.5",
     "knip": "^5.79.0",
-    "oxfmt": "^0.21.0",
-    "oxlint": "^1.36.0",
-    "oxlint-tsgolint": "^0.10.0",
-    "typescript": "^5.9.3",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
+    "typescript": "catalog:",
+    "@typescript/native-preview": "catalog:",
     "wxt": "^0.20.6"
   }
 }

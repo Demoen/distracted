@@ -79,6 +79,8 @@ yes! you could also just not install it! there is only so many layers of annoyan
 
    ```bash
    bun install --frozen-lockfile
+   # extension code is self-contained in the packages/extension folder.
+   cd packages/extension
    bun run zip # for chrome
    bun run zip:firefox # for firefox
    ```
@@ -86,8 +88,8 @@ yes! you could also just not install it! there is only so many layers of annoyan
 4. outputs (for release or inspection/review):
    - chrome:
      - `packages/extension/.output/chrome-mv3/`
-     - `packages/extension/.output/distracted-<version>-chrome.zip`
+     - `packages/extension/.output/distractedextension-<version>-chrome.zip`
    - firefox:
      - `packages/extension/.output/firefox-mv2/`
-     - `packages/extension/.output/distracted-<version>-firefox.zip`
-     - `packages/extension/.output/distracted-<version>-sources.zip`
+     - `packages/extension/.output/distractedextension-<version>-firefox.zip`
+     - `packages/extension/.output/distractedextension-<version>-sources.zip`

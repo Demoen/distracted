@@ -5,5 +5,11 @@
     "browser": true,
     "es2022": true
   },
-  "ignorePatterns": ["node_modules", ".wxt", ".output", "dist", "build"]
+  "ignorePatterns": [
+    "**/node_modules/**",
+    "**/.wxt/**",
+    "**/.output/**",
+    "**/dist/**",
+    "**/build/**"
+  ]
 }
