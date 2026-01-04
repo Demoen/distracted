@@ -17,7 +17,8 @@
     "lint:ci": "oxlint --type-aware --format github",
     "format": "oxfmt",
     "postinstall": "wxt prepare",
-    "knip": "knip"
+    "knip": "knip",
+    "check": "bun run lint:fix && bun run format && bun run compile && bun run knip"
   },
   "dependencies": {
     "@base-ui/react": "^1.0.0",
