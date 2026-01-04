@@ -33,14 +33,17 @@ async function selectAgents(prompt: string, defaultSelected: AgentType[]): Promi
     for (let i = 0; i < AGENT_OPTIONS.length; i++) {
       const opt = AGENT_OPTIONS[i];
       const isSelected = selected.has(opt.id);
-      const prefix =
-        i === cursor ? UI.Style.TEXT_HIGHLIGHT_BOLD + ">" + UI.Style.TEXT_NORMAL : " ";
+      const prefix = i === cursor ? UI.Style.TEXT_HIGHLIGHT_BOLD + ">" + UI.Style.TEXT_NORMAL : " ";
       const checkbox = isSelected ? "[x]" : "[ ]";
       UI.println(`${prefix} ${checkbox} ${opt.label}`);
     }
 
     UI.empty();
-    UI.println(UI.Style.TEXT_DIM + "Use ↑/↓ to move, space to toggle, enter to confirm" + UI.Style.TEXT_NORMAL);
+    UI.println(
+      UI.Style.TEXT_DIM +
+        "Use ↑/↓ to move, space to toggle, enter to confirm" +
+        UI.Style.TEXT_NORMAL,
+    );
   };
 
   emitKeypressEvents(process.stdin);
@@ -83,7 +86,9 @@ async function selectAgents(prompt: string, defaultSelected: AgentType[]): Promi
         if (result.length === 0) {
           render();
           UI.empty();
-          UI.println(UI.Style.TEXT_WARNING_BOLD + "Select at least one agent." + UI.Style.TEXT_NORMAL);
+          UI.println(
+            UI.Style.TEXT_WARNING_BOLD + "Select at least one agent." + UI.Style.TEXT_NORMAL,
+          );
           return;
         }
         cleanup();

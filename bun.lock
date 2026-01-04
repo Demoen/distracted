@@ -1,5 +1,6 @@
 {
   "lockfileVersion": 1,
+  "configVersion": 0,
   "workspaces": {
     "": {
       "name": "wxt-react-starter",
@@ -51,6 +52,10 @@
       "devDependencies": {
         "@types/node": "^24.10.1",
         "bun-types": "^1.2.0",
+        "knip": "catalog:",
+        "oxfmt": "catalog:",
+        "oxlint": "catalog:",
+        "oxlint-tsgolint": "catalog:",
         "typescript": "catalog:",
       },
       "peerDependencies": {

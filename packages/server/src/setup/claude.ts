@@ -96,7 +96,9 @@ export async function removeClaude(): Promise<void> {
   const settingsPath = join(homedir(), ".claude", "settings.json");
   const settings = await readClaudeSettings(settingsPath);
   if (!settings) {
-    UI.println(UI.Style.TEXT_DIM + "No settings.json found, nothing to remove." + UI.Style.TEXT_NORMAL);
+    UI.println(
+      UI.Style.TEXT_DIM + "No settings.json found, nothing to remove." + UI.Style.TEXT_NORMAL,
+    );
     return;
   }
   if (!settings.hooks) {

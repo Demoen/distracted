@@ -40,7 +40,12 @@ async function main(): Promise<void> {
     remove?: unknown;
     status?: boolean;
     port: unknown;
+    help?: boolean;
   };
+
+  if (options.help) {
+    process.exit(0);
+  }
 
   const port = Number(options.port);
   if (!Number.isFinite(port) || port <= 0 || port >= 65536) {
@@ -61,8 +66,16 @@ async function main(): Promise<void> {
   if (hasStatus) {
     const status = await getSetupStatus();
     UI.println(UI.Style.TEXT_SUCCESS_BOLD + "Setup status" + UI.Style.TEXT_NORMAL);
-    UI.println(UI.Style.TEXT_DIM + `Claude Code: ${status.claude ? "configured" : "not configured"}` + UI.Style.TEXT_NORMAL);
-    UI.println(UI.Style.TEXT_DIM + `OpenCode:    ${status.opencode ? "configured" : "not configured"}` + UI.Style.TEXT_NORMAL);
+    UI.println(
+      UI.Style.TEXT_DIM +
+        `Claude Code: ${status.claude ? "configured" : "not configured"}` +
+        UI.Style.TEXT_NORMAL,
+    );
+    UI.println(
+      UI.Style.TEXT_DIM +
+        `OpenCode:    ${status.opencode ? "configured" : "not configured"}` +
+        UI.Style.TEXT_NORMAL,
+    );
     UI.empty();
     process.exit(0);
   }
@@ -127,11 +140,17 @@ async function main(): Promise<void> {
 
   const status = await getSetupStatus();
   if (!status.claude && !status.opencode) {
-    UI.println(UI.Style.TEXT_WARNING_BOLD + "No AI agent hooks are configured yet." + UI.Style.TEXT_NORMAL);
+    UI.println(
+      UI.Style.TEXT_WARNING_BOLD + "No AI agent hooks are configured yet." + UI.Style.TEXT_NORMAL,
+    );
     UI.empty();
 
     if (!process.stdin.isTTY) {
-      UI.println(UI.Style.TEXT_DIM + "Non-interactive shell detected; skipping setup prompt." + UI.Style.TEXT_NORMAL);
+      UI.println(
+        UI.Style.TEXT_DIM +
+          "Non-interactive shell detected; skipping setup prompt." +
+          UI.Style.TEXT_NORMAL,
+      );
       UI.println("Run 'bunx @distracted/server --setup' to configure hooks.");
       UI.empty();
     } else {

@@ -1,6 +1,8 @@
 import type { Plugin } from "@opencode-ai/plugin";
 
-const DISTRACTED_PORT = process.env.DISTRACTED_PORT ? parseInt(process.env.DISTRACTED_PORT, 10) : 8765;
+const DISTRACTED_PORT = process.env.DISTRACTED_PORT
+  ? parseInt(process.env.DISTRACTED_PORT, 10)
+  : 8765;
 const DISTRACTED_URL = `http://localhost:${DISTRACTED_PORT}/hook`;
 
 type HookPayload = {
@@ -68,6 +70,20 @@ export const DistractedPlugin: Plugin = async ({ directory }) => {
           });
           break;
 
+        case "message.updated": {
+          // Check if this is a user message (not an assistant message)
+          const messageEvent = event as { message?: { role?: string } };
+          if (messageEvent.message?.role === "user") {
+            await sendHook({
+              session_id: sessionId,
+              hook_event_name: "UserPromptSubmit",
+              cwd: directory,
+              source: "opencode",
+            });
+          }
+          break;
+        }
+
         case "session.status": {
           const statusEvent = event as { status?: string };
           if (statusEvent.status === "running" || statusEvent.status === "active") {
@@ -83,13 +99,30 @@ export const DistractedPlugin: Plugin = async ({ directory }) => {
       }
     },
 
+    "chat.message": async (input, output) => {
+      if (output.message.role === "user") {
+        const sessionId = input.sessionID || currentSessionId || `opencode-${Date.now()}`;
+        if (input.sessionID) {
+          currentSessionId = input.sessionID;
+        }
+        await sendHook({
+          session_id: sessionId,
+          hook_event_name: "UserPromptSubmit",
+          cwd: directory,
+          source: "opencode",
+        });
+      }
+    },
+
     "tool.execute.before": async (input) => {
-      const sessionId = currentSessionId || `opencode-${Date.now()}`;
+      const sessionId = input.sessionID || currentSessionId || `opencode-${Date.now()}`;
+      if (input.sessionID) {
+        currentSessionId = input.sessionID;
+      }
       await sendHook({
         session_id: sessionId,
         hook_event_name: "PreToolUse",
         tool_name: input.tool,
-        tool_input: input.args as Record<string, unknown>,
         source: "opencode",
       });
     },
