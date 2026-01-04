@@ -42,6 +42,9 @@ jobs:
       - name: install dependencies
         run: bun install --frozen-lockfile
 
+      - name: lint
+        run: bun run lint:ci
+
       - name: compile
         run: bun run compile
 
