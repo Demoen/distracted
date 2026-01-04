@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { IconLock } from "@tabler/icons-react";
-import type { ChallengeComponentProps } from "../../lib/challenges/types";
-import { defineChallenge } from "../../lib/challenges/types";
+import type { ChallengeComponentProps } from "@/lib/challenges/types";
+import { defineChallenge } from "@/lib/challenges/types";
 
 export const StrictChallenge = memo((_props: ChallengeComponentProps<{}>) => {
   return (

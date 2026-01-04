@@ -3,8 +3,8 @@ import { Button } from "@/components/ui/button";
 import { IconAlertTriangle, IconCheck, IconRefresh } from "@tabler/icons-react";
 import { IconServer } from "@tabler/icons-react";
 import { getUnlockGuard } from "@/lib/unlock-guards";
-import type { ChallengeComponentProps } from "../../lib/challenges/types";
-import { defineChallenge } from "../../lib/challenges/types";
+import type { ChallengeComponentProps } from "@/lib/challenges/types";
+import { defineChallenge } from "@/lib/challenges/types";
 
 type ClaudeBlockerSettings = {
   serverUrl: string;

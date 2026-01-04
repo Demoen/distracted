@@ -1,7 +1,7 @@
-import { STORAGE_KEYS, STORAGE_SCHEMA_VERSION } from "../consts";
+import { STORAGE_KEYS, STORAGE_SCHEMA_VERSION } from "@/lib/consts";
 import type { BlockedSite, Schedule, SiteStats, StatsScope } from "./types";
 import type { StorageArea, StorageKey, StorageShape, StoredValue } from "./shared";
-import { getDefaultChallengeSettings, isUnlockMethod } from "../challenges/defaults";
+import { getDefaultChallengeSettings, isUnlockMethod } from "@/lib/challenges/defaults";
 
 const DEFAULT_SCHEDULE: Schedule = {
   enabled: false,

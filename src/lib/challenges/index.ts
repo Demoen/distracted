@@ -1,8 +1,8 @@
-import { timerChallenge } from "../../components/challenges/timer";
-import { holdChallenge } from "../../components/challenges/hold";
-import { typeChallenge } from "../../components/challenges/type";
-import { claudeBlockerChallenge } from "../../components/challenges/claude-blocker";
-import { strictChallenge } from "../../components/challenges/strict";
+import { timerChallenge } from "@/components/challenges/timer";
+import { holdChallenge } from "@/components/challenges/hold";
+import { typeChallenge } from "@/components/challenges/type";
+import { claudeBlockerChallenge } from "@/components/challenges/claude-blocker";
+import { strictChallenge } from "@/components/challenges/strict";
 import type { InferOptionValues } from "./types";
 
 export const CHALLENGES = {

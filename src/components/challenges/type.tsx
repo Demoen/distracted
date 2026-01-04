@@ -1,8 +1,8 @@
 import { useState, useCallback, useRef, memo } from "react";
 import { Input } from "@/components/ui/input";
 import { IconCheck, IconKeyboard } from "@tabler/icons-react";
-import type { ChallengeComponentProps } from "../../lib/challenges/types";
-import { defineChallenge } from "../../lib/challenges/types";
+import type { ChallengeComponentProps } from "@/lib/challenges/types";
+import { defineChallenge } from "@/lib/challenges/types";
 
 export const TypeChallenge = memo(({ onComplete }: ChallengeComponentProps<{}>) => {
   const [targetText] = useState(() => crypto.randomUUID());

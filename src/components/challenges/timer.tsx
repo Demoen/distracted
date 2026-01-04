@@ -1,8 +1,8 @@
 import { useState, useEffect, memo } from "react";
 import { Button } from "@/components/ui/button";
 import { IconClock, IconCheck } from "@tabler/icons-react";
-import type { ChallengeComponentProps } from "../../lib/challenges/types";
-import { defineChallenge } from "../../lib/challenges/types";
+import type { ChallengeComponentProps } from "@/lib/challenges/types";
+import { defineChallenge } from "@/lib/challenges/types";
 
 export const TimerChallenge = memo(
   ({ settings, onComplete }: ChallengeComponentProps<{ duration: number }>) => {
