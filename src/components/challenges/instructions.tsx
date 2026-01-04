@@ -1,4 +1,4 @@
-import type { ChallengeInstructions } from "./index";
+import type { ChallengeInstructions } from "../../lib/challenges/index";
 
 type ChallengeInstructionsPanelProps = {
   instructions: ChallengeInstructions;
