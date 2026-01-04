@@ -712,7 +712,12 @@ export default function App() {
                                 }}
                               >
                                 <SelectTrigger id={`option-${key}`} className="w-full">
-                                  <SelectValue>{opt.label}</SelectValue>
+                                  <SelectValue>
+                                    {
+                                      opt.options.find((choice) => choice.value === currentValue)
+                                        ?.label
+                                    }
+                                  </SelectValue>
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectGroup>
@@ -732,46 +737,6 @@ export default function App() {
                           );
                         }
 
-                        // if (opt.type === "radio") {
-                        //   return (
-                        //     <div key={key} className="space-y-2">
-                        //       <Label className="text-xs font-normal text-muted-foreground">
-                        //         {opt.label}
-                        //       </Label>
-                        //       <div
-                        //         className={cn(
-                        //           "grid gap-1",
-                        //           opt.options.every((choice) => choice.label.length < 10)
-                        //             ? "grid-cols-2"
-                        //             : "grid-cols-1",
-                        //         )}
-                        //       >
-                        //         {opt.options.map((choice) => {
-                        //           const id = `option-${key}-${String(choice.value)}`;
-                        //           return (
-                        //             <label
-                        //               key={id}
-                        //               htmlFor={id}
-                        //               className="flex items-center gap-2 text-sm border border-border/40 rounded-lg px-2 py-1.5 hover:bg-muted/50 transition-colors cursor-pointer"
-                        //             >
-                        //               <input
-                        //                 id={id}
-                        //                 type="checkbox"
-                        //                 name={`option-${key}`}
-                        //                 className="size-4 accent-primary"
-                        //                 checked={String(currentValue) === String(choice.value)}
-                        //                 onChange={() => updateOption(key, choice.value)}
-                        //               />
-                        //               <span>{choice.label}</span>
-                        //             </label>
-                        //           );
-                        //         })}
-                        //       </div>
-                        //       {description}
-                        //     </div>
-                        //   );
-                        // }
-
                         if (opt.type === "checkbox-group" || opt.type === "radio") {
                           const isMulti = opt.type === "checkbox-group";
                           const values = isMulti
@@ -787,7 +752,7 @@ export default function App() {
                               <div
                                 className={cn(
                                   "grid gap-1",
-                                  opt.options.every((choice) => choice.label.length < 10)
+                                  opt.options.every((choice) => choice.label.length < 18)
                                     ? "grid-cols-2"
                                     : "grid-cols-1",
                                 )}

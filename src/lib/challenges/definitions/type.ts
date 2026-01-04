@@ -1,4 +1,8 @@
-import { selectOption, type ChallengeDefinition } from "@/lib/challenges/options";
+import {
+  selectOption,
+  checkboxGroupOption,
+  type ChallengeDefinition,
+} from "@/lib/challenges/options";
 
 export const typeDefinition = {
   label: "Type Text",
@@ -25,28 +29,18 @@ export const typeDefinition = {
       step: 1,
       when: (s) => s.mode === "random",
     },
-    includeUppercase: {
-      type: "checkbox",
-      label: "Include Uppercase (A-Z)",
-      default: true,
-      when: (s) => s.mode === "random",
-    },
-    includeLowercase: {
-      type: "checkbox",
-      label: "Include Lowercase (a-z)",
-      default: true,
-      when: (s) => s.mode === "random",
-    },
-    includeNumbers: {
-      type: "checkbox",
-      label: "Include Numbers (0-9)",
-      default: true,
-      when: (s) => s.mode === "random",
-    },
-    includeSpecial: {
-      type: "checkbox",
-      label: "Include Special Characters (!@#$...)",
-      default: false,
+    randomModeInclude: {
+      ...checkboxGroupOption({
+        label: "Include Character Sets",
+        description: "Select which character types to include in random strings",
+        default: ["uppercase", "lowercase", "numbers"],
+        options: [
+          { label: "Uppercase (A-Z)", value: "uppercase" },
+          { label: "Lowercase (a-z)", value: "lowercase" },
+          { label: "Numbers (0-9)", value: "numbers" },
+          { label: "Special (!@#$...)", value: "special" },
+        ] as const,
+      }),
       when: (s) => s.mode === "random",
     },
     customText: {

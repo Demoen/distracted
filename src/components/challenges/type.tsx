@@ -8,26 +8,17 @@ import { typeDefinition } from "@/lib/challenges/definitions/type";
 type TypeChallengeSettings = {
   mode: string;
   length?: number;
-  includeUppercase?: boolean;
-  includeLowercase?: boolean;
-  includeNumbers?: boolean;
-  includeSpecial?: boolean;
+  randomModeInclude?: string[];
   customText?: string;
 };
 
-function generateRandomString(
-  length: number,
-  includeUppercase: boolean,
-  includeLowercase: boolean,
-  includeNumbers: boolean,
-  includeSpecial: boolean,
-): string {
+function generateRandomString(length: number, include: string[]): string {
   // Build character set based on enabled options
   let charset = "";
-  if (includeUppercase) charset += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  if (includeLowercase) charset += "abcdefghijklmnopqrstuvwxyz";
-  if (includeNumbers) charset += "0123456789";
-  if (includeSpecial) charset += "!@#$%^&*()_+-=[]{}|;:,.<>?";
+  if (include.includes("uppercase")) charset += "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  if (include.includes("lowercase")) charset += "abcdefghijklmnopqrstuvwxyz";
+  if (include.includes("numbers")) charset += "0123456789";
+  if (include.includes("special")) charset += "!@#$%^&*()_+-=[]{}|;:,.<>?";
 
   // Ensure at least one character set is enabled
   if (charset.length === 0) {
@@ -50,10 +41,7 @@ const TypeChallenge = memo(
         case "random":
           return generateRandomString(
             settings.length ?? 21,
-            settings.includeUppercase ?? true,
-            settings.includeLowercase ?? true,
-            settings.includeNumbers ?? true,
-            settings.includeSpecial ?? false,
+            settings.randomModeInclude ?? ["uppercase", "lowercase", "numbers"],
           );
         case "custom":
           return settings.customText ?? "";
