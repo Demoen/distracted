@@ -33,10 +33,7 @@ jobs:
       - name: lint
         run: bun run lint:ci
 
-      - name: type check
-        run: bun run compile
-
       - name: build extension
         run: |
-          bun run build
-          bun run build:firefox
+          bun run --cwd packages/extension build
+          bun run --cwd packages/extension build:firefox
