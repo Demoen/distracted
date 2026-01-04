@@ -1,9 +1,9 @@
 import type { UnlockMethod } from "@/lib/challenges/manifest";
 import {
-  getClaudeBlockerStatus,
-  parseClaudeBlockerStateMessage,
-  resolveClaudeBlockerWebSocketUrl,
-} from "@/lib/claude-blocker";
+  getAiAgentStatus,
+  parseAiAgentStateMessage,
+  resolveAiAgentWebSocketUrl,
+} from "@/lib/ai-agent-client";
 
 export type UnlockGuardState = {
   active: boolean;
@@ -29,7 +29,7 @@ const UNLOCK_GUARDS: Partial<Record<UnlockMethod, UnlockGuardDefinition>> = {
         | { serverUrl?: string; allowWhileWaitingForInput?: boolean }
         | null
         | undefined;
-      const result = await getClaudeBlockerStatus(config?.serverUrl ?? "");
+      const result = await getAiAgentStatus(config?.serverUrl ?? "");
 
       if (!result.active && result.waitingForInput > 0 && config?.allowWhileWaitingForInput) {
         return {
@@ -43,7 +43,7 @@ const UNLOCK_GUARDS: Partial<Record<UnlockMethod, UnlockGuardDefinition>> = {
         return {
           active: false,
           reason: "waiting",
-          message: "Claude is waiting for your input.",
+          message: "AI agent is waiting for your input.",
         };
       }
 
@@ -52,14 +52,14 @@ const UNLOCK_GUARDS: Partial<Record<UnlockMethod, UnlockGuardDefinition>> = {
         reason: result.reason,
         message:
           result.reason === "invalid_url"
-            ? "Claude Blocker server URL is invalid."
+            ? "Distracted server URL is invalid."
             : result.reason === "server_error"
-              ? `Claude Blocker server error${result.statusCode ? ` (${result.statusCode})` : ""}.`
+              ? `Distracted server error${result.statusCode ? ` (${result.statusCode})` : ""}.`
               : result.reason === "offline"
-                ? "Claude Blocker server is offline."
+                ? "Distracted server is offline."
                 : result.active
                   ? undefined
-                  : "Claude Code is idle.",
+                  : "AI agent is idle.",
       };
     },
     getWebSocketUrl: (settings) => {
@@ -67,11 +67,11 @@ const UNLOCK_GUARDS: Partial<Record<UnlockMethod, UnlockGuardDefinition>> = {
         | { serverUrl?: string; allowWhileWaitingForInput?: boolean }
         | null
         | undefined;
-      return resolveClaudeBlockerWebSocketUrl(config?.serverUrl ?? "");
+      return resolveAiAgentWebSocketUrl(config?.serverUrl ?? "");
     },
     parseWebSocketMessage: (payload, settings) => {
       const config = settings as { allowWhileWaitingForInput?: boolean } | null | undefined;
-      const result = parseClaudeBlockerStateMessage(payload);
+      const result = parseAiAgentStateMessage(payload);
       if (!result) return null;
 
       if (!result.active && result.waitingForInput > 0 && config?.allowWhileWaitingForInput) {
@@ -86,14 +86,14 @@ const UNLOCK_GUARDS: Partial<Record<UnlockMethod, UnlockGuardDefinition>> = {
         return {
           active: false,
           reason: "waiting",
-          message: "Claude is waiting for your input.",
+          message: "AI agent is waiting for your input.",
         };
       }
 
       return {
         active: result.active,
         reason: result.reason,
-        message: result.active ? undefined : "Claude Code is idle.",
+        message: result.active ? undefined : "AI agent is idle.",
       };
     },
     pollIntervalMs: CLAUDE_POLL_INTERVAL_MS,

@@ -5,14 +5,14 @@ import { IconServer } from "@tabler/icons-react";
 import { getUnlockGuard } from "@/lib/unlock-guards";
 import type { ChallengeComponentProps } from "@/lib/challenges/ui";
 import { defineChallengeUi } from "@/lib/challenges/ui";
-import { claudeDefinition } from "@/lib/challenges/definitions/claude";
+import { aiAgentDefinition } from "@/lib/challenges/definitions/ai-agent";
 
-type ClaudeBlockerSettings = {
+type AiAgentSettings = {
   serverUrl: string;
   allowWhileWaitingForInput?: boolean;
 };
 
-type ClaudeBlockerStatus = "idle" | "checking" | "active" | "inactive" | "error";
+type AiAgentStatus = "idle" | "checking" | "active" | "inactive" | "error";
 
 type DebugState = {
   label: string;
@@ -38,9 +38,9 @@ const getDebugState = (state: { active: boolean; reason?: string }): DebugState 
   return { label: "Blocked", tone: "warning" };
 };
 
-const ClaudeBlockerChallenge = memo(
-  ({ settings, onComplete }: ChallengeComponentProps<ClaudeBlockerSettings>) => {
-    const [status, setStatus] = useState<ClaudeBlockerStatus>("idle");
+const AiAgentChallenge = memo(
+  ({ settings, onComplete }: ChallengeComponentProps<AiAgentSettings>) => {
+    const [status, setStatus] = useState<AiAgentStatus>("idle");
     const [message, setMessage] = useState<string | null>(null);
     const [completed, setCompleted] = useState(false);
     const checkingRef = useRef(false);
@@ -58,7 +58,7 @@ const ClaudeBlockerChallenge = memo(
 
         if (!guard) {
           setStatus("error");
-          setMessage("Claude Code guard unavailable.");
+          setMessage("AI agent guard unavailable.");
           checkingRef.current = false;
           return;
         }
@@ -95,7 +95,7 @@ const ClaudeBlockerChallenge = memo(
 
         setStatus("inactive");
         if (result.reason === "waiting") {
-          setMessage("Claude Code is waiting for your input.");
+          setMessage("AI agent is waiting for your input.");
         } else if (mode === "manual") {
           setMessage(null);
         }
@@ -127,7 +127,7 @@ const ClaudeBlockerChallenge = memo(
           {status === "active" ? (
             <>
               <IconCheck className="size-5 text-green-500" />
-              <span className="text-green-500">Claude Code is working. You can continue.</span>
+              <span className="text-green-500">AI agent is working. You can continue.</span>
             </>
           ) : status === "error" ? (
             <>
@@ -138,7 +138,7 @@ const ClaudeBlockerChallenge = memo(
             <>
               <IconAlertTriangle className="size-5 text-muted-foreground" />
               <span className="text-muted-foreground">
-                {message ?? "Claude Code is idle. Start a session to unlock."}
+                {message ?? "AI agent is idle. Start a session to unlock."}
               </span>
             </>
           )}
@@ -154,8 +154,8 @@ const ClaudeBlockerChallenge = memo(
           {status === "checking"
             ? "Checking..."
             : completed
-              ? "Claude Code Active"
-              : "Check Claude Code Status"}
+              ? "AI Agent Active"
+              : "Check AI Agent Status"}
         </Button>
 
         <p className="min-h-4 text-xs text-center text-muted-foreground">{message ?? "\u00A0"}</p>
@@ -164,64 +164,62 @@ const ClaudeBlockerChallenge = memo(
   },
 );
 
-ClaudeBlockerChallenge.displayName = "ClaudeBlockerChallenge";
+AiAgentChallenge.displayName = "AiAgentChallenge";
 
-export const ClaudeBlockerDebug = memo(
-  ({ settings }: ChallengeComponentProps<ClaudeBlockerSettings>) => {
-    const [state, setState] = useState<{
-      active: boolean;
-      reason?: string;
-    } | null>(null);
+export const AiAgentDebug = memo(({ settings }: ChallengeComponentProps<AiAgentSettings>) => {
+  const [state, setState] = useState<{
+    active: boolean;
+    reason?: string;
+  } | null>(null);
 
-    const checkStatus = useCallback(async () => {
-      if (!guard) return;
-      const result = await guard.check(settings);
-      setState({ active: result.active, reason: result.reason });
-    }, [settings]);
+  const checkStatus = useCallback(async () => {
+    if (!guard) return;
+    const result = await guard.check(settings);
+    setState({ active: result.active, reason: result.reason });
+  }, [settings]);
 
-    useEffect(() => {
-      void checkStatus();
-      const interval = setInterval(checkStatus, 3000);
-      return () => clearInterval(interval);
-    }, [checkStatus]);
+  useEffect(() => {
+    void checkStatus();
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [checkStatus]);
 
-    const debug = state ? getDebugState(state) : null;
+  const debug = state ? getDebugState(state) : null;
 
-    return (
-      <div className="rounded-md border border-border bg-muted/30 p-2 text-[11px]">
-        <div className="flex items-center justify-between text-muted-foreground">
-          <span className="font-medium">Debug</span>
-          {debug ? (
-            <span
-              className={
-                debug.tone === "success"
-                  ? "text-green-500"
-                  : debug.tone === "error"
-                    ? "text-destructive"
-                    : "text-yellow-600"
-              }
-            >
-              {debug.label}
-            </span>
-          ) : (
-            <span className="text-muted-foreground">Checking…</span>
-          )}
-        </div>
-        <div className="mt-1 text-muted-foreground">
-          <span className="font-medium">URL:</span>{" "}
-          <span className="font-mono break-all">{settings.serverUrl || "Not configured"}</span>
-        </div>
+  return (
+    <div className="rounded-md border border-border bg-muted/30 p-2 text-[11px]">
+      <div className="flex items-center justify-between text-muted-foreground">
+        <span className="font-medium">Debug</span>
+        {debug ? (
+          <span
+            className={
+              debug.tone === "success"
+                ? "text-green-500"
+                : debug.tone === "error"
+                  ? "text-destructive"
+                  : "text-yellow-600"
+            }
+          >
+            {debug.label}
+          </span>
+        ) : (
+          <span className="text-muted-foreground">Checking…</span>
+        )}
       </div>
-    );
-  },
-);
+      <div className="mt-1 text-muted-foreground">
+        <span className="font-medium">URL:</span>{" "}
+        <span className="font-mono break-all">{settings.serverUrl || "Not configured"}</span>
+      </div>
+    </div>
+  );
+});
 
-ClaudeBlockerDebug.displayName = "ClaudeBlockerDebug";
+AiAgentDebug.displayName = "AiAgentDebug";
 
-export const claudeBlockerChallenge = defineChallengeUi({
-  ...claudeDefinition,
+export const aiAgentChallenge = defineChallengeUi({
+  ...aiAgentDefinition,
   icon: <IconServer className="size-5" />,
-  render: (props) => <ClaudeBlockerChallenge {...props} />,
+  render: (props) => <AiAgentChallenge {...props} />,
   renderSummary: (settings) => (
     <>
       <IconServer className="size-3 inline align-middle mr-1" />

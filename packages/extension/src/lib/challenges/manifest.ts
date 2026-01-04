@@ -1,7 +1,7 @@
 import { timerDefinition } from "@/lib/challenges/definitions/timer";
 import { holdDefinition } from "@/lib/challenges/definitions/hold";
 import { typeDefinition } from "@/lib/challenges/definitions/type";
-import { claudeDefinition } from "@/lib/challenges/definitions/claude";
+import { aiAgentDefinition } from "@/lib/challenges/definitions/ai-agent";
 import { strictDefinition } from "@/lib/challenges/definitions/strict";
 import { mathsDefinition } from "@/lib/challenges/definitions/maths";
 import type { InferOptionValues } from "@/lib/challenges/options";
@@ -10,7 +10,7 @@ const CHALLENGE_DEFINITIONS = {
   timer: timerDefinition,
   hold: holdDefinition,
   type: typeDefinition,
-  claude: claudeDefinition,
+  claude: aiAgentDefinition,
   strict: strictDefinition,
   maths: mathsDefinition,
 } as const;
