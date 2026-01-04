@@ -1,6 +1,6 @@
 {
   "name": "@distracted/server",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "description": "Local server + Claude Code hook installer for distracted's Claude Blocker integration.",
   "license": "MIT",
   "bin": {
